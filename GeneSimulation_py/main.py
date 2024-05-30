@@ -15,8 +15,8 @@ import time
 
 np.set_printoptions(precision=2, suppress=True)
 
-def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRandom):
 
+def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRandom):
     # if hasGovment == True:
     #     tax_rate = 0.0
     #     gov_pop = 0.0       # base_pop * (num_players-1) * tax_rate
@@ -43,18 +43,18 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
     tkns = num_players
 
     game_params = {
-        "num_players": num_players, 
-        "alpha": alpha_min, #np.random.uniform(alpha_min, alpha_max), 
-        "beta": beta_min, #np.random.uniform(beta_min, beta_max), 
-        "keep": keep_min, #np.random.uniform(keep_min, keep_max), 
-        "give": give_min, #np.random.uniform(give_min, give_max), 
-        "steal": steal_min, #np.random.uniform(steal_min, steal_max), 
+        "num_players": num_players,
+        "alpha": alpha_min,  # np.random.uniform(alpha_min, alpha_max),
+        "beta": beta_min,  # np.random.uniform(beta_min, beta_max),
+        "keep": keep_min,  # np.random.uniform(keep_min, keep_max),
+        "give": give_min,  # np.random.uniform(give_min, give_max),
+        "steal": steal_min,  # np.random.uniform(steal_min, steal_max),
         "poverty_line": poverty_line,
         "base_popularity": np.array(initial_pops)
         # "base_popularity": np.array([*[base_pop]*(num_players)])
         # "base_popularity": np.array(random.sample(range(1, 200), num_players))
-        
-    }        
+
+    }
 
     # # assign the agents to groups
     # agentsPerGroup = num_players / numGroups
@@ -68,7 +68,7 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
     # else:
     #     for i in range(0, num_players):
     #         theGroups[int(i / agentsPerGroup)].add(i)
-        
+
     # print(theGroups)
 
     # tell the agents the game params
@@ -103,7 +103,7 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
         a.setGameParams(game_params, forcedRandom)
         # TODO: post contract
 
-    # print(game_params)    
+    # print(game_params)
 
     # rounds = int(np.random.uniform(min_rounds, max_rounds))
 
@@ -113,8 +113,9 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
     sim = GameSimulator(game_params)
     for r in range(rounds):
         if humanInd >= 0:
-            recordState(r, sim, humanInd, False)     # This records data so that the java human player can interact with this engine
-        
+            recordState(r, sim, humanInd,
+                        False)  # This records data so that the java human player can interact with this engine
+
         # print("\nRound: " + str(r))
         T = np.eye(num_players) * tkns
         T_prev = sim.get_transaction()
@@ -122,22 +123,22 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
             if type(plyr) == DummyGovtAgent:
                 for j in range(len(players)):
                     owed_taxes = plyr.get_player_taxes(j,
-                                    T_prev[:, i], 
-                                    sim.get_popularity(),
-                                    sim.get_influence(),
-                                    sim.get_extra_data(i)
-                                )
+                                                       T_prev[:, i],
+                                                       sim.get_popularity(),
+                                                       sim.get_influence(),
+                                                       sim.get_extra_data(i)
+                                                       )
                     sim.set_extra_data(i, j, {'is_government': True, 'taxes': owed_taxes})
 
-        for i, plyr in enumerate(players):                    
+        for i, plyr in enumerate(players):
             T[i] = plyr.play_round(
-                        i,
-                        r,
-                        T_prev[:, i], 
-                        sim.get_popularity(),
-                        sim.get_influence(),
-                        sim.get_extra_data(i)
-                    )
+                i,
+                r,
+                T_prev[:, i],
+                sim.get_popularity(),
+                sim.get_influence(),
+                sim.get_extra_data(i)
+            )
 
         # print("transactions:")
         # print(T)
@@ -156,10 +157,11 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
             # runningTotal = (0.8 * runningTotal) + (0.2 * sim.get_popularity())
             runningTotal += sim.get_popularity()
 
-    print("P:\n" + str(sim.engine.P))                
+    print("P:\n" + str(sim.engine.P))
 
     if humanInd >= 0:
-        recordState(rounds, sim, humanInd, True)     # This records data so that the java human player can interact with this engine
+        recordState(rounds, sim, humanInd,
+                    True)  # This records data so that the java human player can interact with this engine
 
     fnombre = "../Results/theGameLogs/log_" + str(gener) + "_" + str(gamer) + ".csv"
     sim.save(fnombre)
@@ -168,6 +170,7 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
     #     return sim.get_popularity()[1:], runningTotal / rounds
     # else:
     return sim.get_popularity(), runningTotal / rounds
+
 
 def recordState(round_num, sim, humanPlayerInd, gameOver):
     numPlayers = len(sim.get_popularity())
@@ -178,14 +181,14 @@ def recordState(round_num, sim, humanPlayerInd, gameOver):
     if not gameOver:
         output.write("inprogress\n")
     else:
-        output.write("fin\n")       
+        output.write("fin\n")
     output.write(str(numPlayers) + "\n")
     output.write(str(humanPlayerInd) + "\n")
     output.write(str(round_num) + "\n")
 
     # print out the popularities
     for i in range(0, numPlayers):
-        for r in range(0, round_num+1):
+        for r in range(0, round_num + 1):
             output.write(str(sim.engine.get_popularity(r)[i]) + " ")
         output.write("\n")
 
@@ -196,11 +199,11 @@ def recordState(round_num, sim, humanPlayerInd, gameOver):
             # print(int((T_prev[i, j] * numPlayers * 2) + 0.01))
             # output.write(str(int(T_prev[i, j] * numPlayers * 2)) + " ")
             if T_prev[i, j] < 0:
-                output.write(str(int((T_prev[i, j] * int(numPlayers*2)) - 0.01)) + " ")
+                output.write(str(int((T_prev[i, j] * int(numPlayers * 2)) - 0.01)) + " ")
             else:
-                output.write(str(int((T_prev[i, j] * int(numPlayers*2)) + 0.01)) + " ")
+                output.write(str(int((T_prev[i, j] * int(numPlayers * 2)) + 0.01)) + " ")
         output.write("\n")
-    
+
     # print out the current tornadoValues
     # influence = sim.get_influence()
     # for i in range(0, numPlayers):
@@ -209,7 +212,7 @@ def recordState(round_num, sim, humanPlayerInd, gameOver):
     #     output.write("\n")
 
     # print out all of the previous tornadoValues
-    for t in range(0, round_num+1):
+    for t in range(0, round_num + 1):
         influence = sim.engine.get_influence(t)
         for i in range(0, numPlayers):
             for j in range(0, numPlayers):
@@ -227,6 +230,7 @@ def recordState(round_num, sim, humanPlayerInd, gameOver):
 
     os.system("mv ../State/state.tmp ../State/state.txt")
 
+
 def findHumanPlayer(players):
     numPlayers = len(players)
     for i in range(0, numPlayers):
@@ -234,6 +238,7 @@ def findHumanPlayer(players):
             return i
 
     return -1
+
 
 def loadPopulationFromFile(popSize, generationFolder, startIndex, num_gene_pools):
     fnombre = generationFolder + "/gen_" + str(startIndex) + ".csv"
@@ -245,7 +250,7 @@ def loadPopulationFromFile(popSize, generationFolder, startIndex, num_gene_pools
 
     thePopulation = []
 
-    for i in range(0,popSize):
+    for i in range(0, popSize):
         line = fp.readline()
         words = line.split(",")
 
@@ -257,6 +262,7 @@ def loadPopulationFromFile(popSize, generationFolder, startIndex, num_gene_pools
     fp.close()
 
     return thePopulation
+
 
 def loadPopulationFromScenario():
     fp = open("ScenarioIndicator/theGenotypes.txt", "r")
@@ -279,7 +285,7 @@ def loadPopulationFromScenario():
     i = 0
     for line in fp:
         thePopulation[i].genes_long["visualTrait"] = int(line)
-        i = i+1
+        i = i + 1
 
     fp.close()
 
@@ -300,8 +306,8 @@ def selectByWeightedFitness(thePopulation, popSize, numPlayers):
             return i
 
     print("didn't select; num = " + str(num) + "; sum = " + str(sum) + "\n")
-    
-    return (popSize-1)
+
+    return (popSize - 1)
 
 
 def selectByFitness(thePopulation, popSize, _rank):
@@ -326,8 +332,8 @@ def selectByFitness(thePopulation, popSize, _rank):
             return i
 
     print("didn't select; num = " + str(num) + "; sum = " + str(sum) + "\n")
-    
-    return (popSize-1)
+
+    return (popSize - 1)
 
 
 # def evolvePopulation(thePopulation, popSize):
@@ -376,8 +382,8 @@ def selectByFitnessObserved(observedPlayInd, _rank):
             return observedPlayInd[i][0]
 
     print("didn't select; num = " + str(num) + "; sum = " + str(sum) + "\n")
-    
-    return observedPlayInd[len(observedPlayInd)-1][0]
+
+    return observedPlayInd[len(observedPlayInd) - 1][0]
 
 
 def evolvePopulationPairs(theGenePools, popSize):
@@ -386,7 +392,7 @@ def evolvePopulationPairs(theGenePools, popSize):
     # generate newGenePools
     for pool in range(0, len(theGenePools)):
         newPopulation = []
-        for i in range(0,popSize):
+        for i in range(0, popSize):
             # select 2 agents from theGenePools[pool]
             if i < (popSize / 5):
                 ind1 = selectByFitness(theGenePools[pool], popSize, True)
@@ -401,10 +407,10 @@ def evolvePopulationPairs(theGenePools, popSize):
 
             genstr = "genes_"
             numGenes = len(theGenePools[pool][0].genes_long)
-            for i in range(1,numGenes+1):
+            for i in range(1, numGenes + 1):
                 # print(i)
                 # ind = ind1
-                if random.randint(0,1) == 0:
+                if random.randint(0, 1) == 0:
                     if i == numGenes:
                         genstr += mutateIt(words1[i])
                     else:
@@ -428,22 +434,22 @@ def evolvePopulationPairs(theGenePools, popSize):
 
 
 def mutateIt(gene):
-    v = np.random.randint(0,100) 
+    v = np.random.randint(0, 100)
     if v >= 15:
         return gene
     elif v < 3:
-        g = np.random.randint(0,101)
+        g = np.random.randint(0, 101)
         # print("big randm: " + gene + " to " + str(g))
         return str(g)
     else:
-        g = int(gene) + np.random.randint(-5,6)
+        g = int(gene) + np.random.randint(-5, 6)
         # print("randomize: " + gene + " to " + str(g))
         if g < 0:
             g = 0
         elif g > 100:
             g = 100
         return str(g)
-    
+
 
 def evolvePopulationObserved(thePopulation, observedPlay, popSize):
     newPopulation = []
@@ -451,10 +457,10 @@ def evolvePopulationObserved(thePopulation, observedPlay, popSize):
     percentSwitch = 30
 
     # generate newPopulation
-    for i in range(0,popSize):
+    for i in range(0, popSize):
         # select
-        if (len(observedPlay[i]) > 0) and (np.random.randint(0,100) < percentSwitch):
-            if np.random.randint(0,2) == 0:
+        if (len(observedPlay[i]) > 0) and (np.random.randint(0, 100) < percentSwitch):
+            if np.random.randint(0, 2) == 0:
                 ind = selectByFitnessObserved(observedPlay[i], True)
             else:
                 ind = selectByFitnessObserved(observedPlay[i], False)
@@ -468,7 +474,7 @@ def evolvePopulationObserved(thePopulation, observedPlay, popSize):
 
             # splice
             numb = np.random.uniform(0, 1.0)
-            if (numb <= 0.075):   # splice with probability 0.075
+            if (numb <= 0.075):  # splice with probability 0.075
                 ind = selectByFitnessObserved(observedPlay[i], True)
                 newPopulation[i].splice(thePopulation[ind])
 
@@ -497,7 +503,9 @@ def writeGenerationResults(theGenePools, popSize, gen, agentsPerGame):
         sm = 0.0
         for i in range(0, popSize):
             sm = sm + theGenePools[pool][i].absoluteFitness
-            output.write(theGenePools[pool][i].getString() + "," + str(theGenePools[pool][i].count) + "," + str(f'{theGenePools[pool][i].relativeFitness:.2f}') + "," + str(f'{theGenePools[pool][i].absoluteFitness:.2f}') + "\n")
+            output.write(theGenePools[pool][i].getString() + "," + str(theGenePools[pool][i].count) + "," + str(
+                f'{theGenePools[pool][i].relativeFitness:.2f}') + "," + str(
+                f'{theGenePools[pool][i].absoluteFitness:.2f}') + "\n")
 
         output.close()
 
@@ -522,11 +530,13 @@ def writeGenerationResultsSorted(thePopulation, popSize, gen, agentsPerGame):
     sum = 0.0
     for i in range(0, popSize):
         sum = sum + thePopulation[i].absoluteFitness
-        output.write(thePopulation[i].getString() + "," + str(thePopulation[i].count) + "," + str(f'{thePopulation[i].relativeFitness:.2f}') + "," + str(f'{thePopulation[i].absoluteFitness:.2f}') + "\n")
+        output.write(thePopulation[i].getString() + "," + str(thePopulation[i].count) + "," + str(
+            f'{thePopulation[i].relativeFitness:.2f}') + "," + str(f'{thePopulation[i].absoluteFitness:.2f}') + "\n")
 
     output.close()
 
     print("Average population fitness of generation " + str(gen) + ": " + str(sum / popSize))
+
 
 # def readScript(scriptName):
 #     fnombre = "scripts/" + scriptName + ".txt"
@@ -536,7 +546,7 @@ def writeGenerationResultsSorted(thePopulation, popSize, gen, agentsPerGame):
 #     numRounds = int(fp.readline())
 
 #     # thePlan = []
-    
+
 #     for r in range(0, numRounds):
 #         # round = []
 #         fp.readline()
@@ -563,7 +573,7 @@ def define_initial_pops(init_pop, num_players):
 
     # assign the initial popularities
     if init_pop == "equal":
-        initial_pops = [*[base_pop]*(num_players)]
+        initial_pops = [*[base_pop] * (num_players)]
     elif init_pop == "random":
         initial_pops = random.sample(range(1, 200), num_players)
     elif init_pop == "step":
@@ -574,16 +584,16 @@ def define_initial_pops(init_pop, num_players):
     elif init_pop == "power":
         initial_pops = np.zeros(num_players, dtype=float)
         for i in range(0, num_players):
-            initial_pops[i] = 1.0 / (pow(i+1, 0.7))
+            initial_pops[i] = 1.0 / (pow(i + 1, 0.7))
         random.shuffle(initial_pops)
     elif init_pop == "highlow":
         initial_pops = random.sample(range(1, 51), num_players)
-        for i in range(0,num_players / 2):
+        for i in range(0, num_players / 2):
             initial_pops[i] += 150
         random.shuffle(initial_pops)
     else:
         print("don't understand init_pop " + str(init_pop) + " so just going with equal")
-        initial_pops = [*[base_pop]*(num_players)]
+        initial_pops = [*[base_pop] * (num_players)]
 
     # normalize initial_pops so average popularity across all agents is 100
     tot_start_pop = base_pop * num_players
@@ -614,13 +624,13 @@ if __name__ == '__main__':
         numRounds = int(sys.argv[7])
 
         if sys.argv[8] == "best_agents":
-            player_idxs = list(np.arange(0,numAgents))
+            player_idxs = list(np.arange(0, numAgents))
         elif sys.argv[8] == "rnd_agents":
             # player_idxs = np.random.choice(np.arange(len(theGenePools[0])-1), size=numAgents, replace=False)
             player_idxs = np.random.choice(np.arange(popSize), size=numAgents, replace=False)
         else:
             print("don't understand agentSelection: " + sys.argv[8] + "; Must be best_agents or rnd_agents")
-            sys.exit()           
+            sys.exit()
 
         poverty_line = float(sys.argv[10])
 
@@ -646,7 +656,6 @@ if __name__ == '__main__':
 
         except IOError:
             print('config file not found: ' + str(fnombre))
-
 
         print("num configured players: " + str(len(configuredPlayers)))
 
@@ -675,11 +684,11 @@ if __name__ == '__main__':
         print("relPop: " + str(avePop / sum(avePop)))
 
     # The "evolve" portion of this code is not up-to-date with recent changes (use the C++ to evolve parameter values)
-    # elif sys.argv[1] == "evolve":             
+    # elif sys.argv[1] == "evolve":
     #     if len(sys.argv) != 12:
     #         print("Not enough argument for <evolve>")
     #         sys.exit(1)
-       
+
     #     theFolder = sys.argv[2]
     #     popSize = int(sys.argv[3])
     #     num_gene_pools = int(sys.argv[4])
@@ -692,7 +701,7 @@ if __name__ == '__main__':
     #     addGovment = False
     #     if sys.argv[11] == "addGovment":
     #         addGovment = True
-        
+
     #     if num_gene_pools == 1:
     #         pool_delimiters = [99999]
     #     elif num_gene_pools == 2:
@@ -713,7 +722,7 @@ if __name__ == '__main__':
     #         theGenePools = []
     #         for i in range(0, num_gene_pools):
     #             theGenePools.append([ GeneAgent3("") for i in range(popSize) ])
-        
+
     #     for g in range(startIndex, numGens):    # let's do this for each generation
 
     #         for p in range(0, gamesPerGen):     # let's do this for each game in each generation
@@ -729,7 +738,7 @@ if __name__ == '__main__':
     #             init_relPop = np.zeros(agentsPerGame, dtype=float)
     #             for i in range(0, agentsPerGame):
     #                 init_relPop[i] = initial_pops[i] / s
-                
+
     #             # assign each player to a pool based on their assigned initial popularity
     #             pool_assignments = np.zeros(agentsPerGame, dtype=int)
     #             for i in range(0, agentsPerGame):
@@ -773,9 +782,8 @@ if __name__ == '__main__':
     #                     theGenePools[pool_assignments[i]][player_idxs[i]].count = theGenePools[pool_assignments[i]][player_idxs[i]].count + 1
     #                     theGenePools[pool_assignments[i]][player_idxs[i]].absoluteFitness += ((avePop[i] + endPop[i]) / 2.0) / initial_pops[i]
     #                     theGenePools[pool_assignments[i]][player_idxs[i]].relativeFitness += relPop[i] / init_relPop[i]
-            
+
     #         writeGenerationResults(theGenePools, popSize, g, agentsPerGame)
     #         theGenePools = evolvePopulationPairs(theGenePools, popSize)
     else:
         print("Argument format invalid.  Exiting")
-
