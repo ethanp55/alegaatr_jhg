@@ -1,5 +1,6 @@
 from engine import JHGEngine
 
+
 class GameSimulator:
 
     def __init__(self, game_params) -> None:
@@ -35,10 +36,14 @@ class GameSimulator:
         with open(outFilePath, "w") as f:
             param_col_str = f"round,alpha,beta,give,keep,steal"
             pops_col_str = ",".join(f'p{i}' for i in range(len(self.engine.get_popularity())))
-            act_col_str = ",".join(f'p{i}=>p{j}' for i in range(len(self.engine.get_popularity())) for j in range(len(self.engine.get_popularity())))
-            f.write(f"{param_col_str},{pops_col_str},{act_col_str}\n") # column names
-            for t in range(self.engine.t+1):
+            act_col_str = ",".join(f'p{i}-T-p{j}' for i in range(len(self.engine.get_popularity())) for j in
+                                   range(len(self.engine.get_popularity())))
+            inf_col_str = ",".join(f'p{i}-I-p{j}' for i in range(len(self.engine.get_popularity())) for j in
+                                   range(len(self.engine.get_popularity())))
+            f.write(f"{param_col_str},{pops_col_str},{act_col_str},{inf_col_str}\n")  # column names
+            for t in range(self.engine.t + 1):
                 param_str = f"{t},{self.engine.alpha},{self.engine.beta},{self.engine.C_g},{self.engine.C_k},{self.engine.C_s}"
                 pops_str = ",".join(f'{p}' for p in self.engine.get_popularity(t))
                 act_str = ",".join(f'{a}' for a in self.engine.get_transaction(t).flatten())
-                f.write(f"{param_str},{pops_str},{act_str}\n")
+                inf_str = ",".join(f'{inf}' for inf in self.engine.get_influence(t).flatten())
+                f.write(f"{param_str},{pops_str},{act_str},{inf_str}\n")

@@ -16,7 +16,7 @@ import time
 np.set_printoptions(precision=2, suppress=True)
 
 
-def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRandom):
+def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRandom, folder_to_save_to):
     # if hasGovment == True:
     #     tax_rate = 0.0
     #     gov_pop = 0.0       # base_pop * (num_players-1) * tax_rate
@@ -163,7 +163,8 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
         recordState(rounds, sim, humanInd,
                     True)  # This records data so that the java human player can interact with this engine
 
-    fnombre = "../Results/theGameLogs/log_" + str(gener) + "_" + str(gamer) + ".csv"
+    fnombre = "../Results/theGameLogs/log_" + str(gener) + "_" + str(
+        gamer) + ".csv" if folder_to_save_to is None else folder_to_save_to
     sim.save(fnombre)
 
     # if hasGovment == True:
@@ -612,8 +613,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if sys.argv[1] == "play":
-        if len(sys.argv) != 13:
-            print("Not enough argument")
+        if len(sys.argv) != 17:
+            print("Not enough arguments")
             sys.exit(1)
 
         theFolder = sys.argv[2]
@@ -622,6 +623,10 @@ if __name__ == '__main__':
         theGen = int(sys.argv[5])
         numAgents = int(sys.argv[6])
         numRounds = int(sys.argv[7])
+        n_specified_agents = int(sys.argv[13])
+        specified_agents_generation = int(sys.argv[14])
+        specified_agents_params_folder = str(sys.argv[15])
+        folder_to_save_to = str(sys.argv[16])
 
         if sys.argv[8] == "best_agents":
             player_idxs = list(np.arange(0, numAgents))
@@ -657,6 +662,11 @@ if __name__ == '__main__':
         except IOError:
             print('config file not found: ' + str(fnombre))
 
+        for i in range(n_specified_agents):
+            specified_pool = loadPopulationFromFile(popSize, specified_agents_params_folder,
+                                                    specified_agents_generation, num_gene_copies)
+            configuredPlayers.append(specified_pool[i])
+
         print("num configured players: " + str(len(configuredPlayers)))
 
         theGenePools = loadPopulationFromFile(popSize, theFolder, theGen, num_gene_copies)
@@ -678,7 +688,8 @@ if __name__ == '__main__':
         players = np.array(plyrs)
         # print(len(players))
 
-        result, avePop = play_game(list(players), numRounds, 1000, 1000, initial_pops, poverty_line, forcedRandom)
+        result, avePop = play_game(list(players), numRounds, 1000, 1000, initial_pops, poverty_line, forcedRandom,
+                                   folder_to_save_to)
         print("endPop: " + str(result))
         print("avePop: " + str(avePop))
         print("relPop: " + str(avePop / sum(avePop)))

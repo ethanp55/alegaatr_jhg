@@ -279,8 +279,8 @@ PopularityMetrics *playGame(AbstractAgent **agents, int numPlayers, int numRound
         recordState(numRounds, jhg, humanInd, true);
 
     // log game
-    string fnombre = "../Results/theGameLogs/log_" + to_string(gener) + "_" + to_string(gamer) + ".csv";
-    jhg->save(fnombre);
+    //string fnombre = "../Results/theGameLogs/log_" + to_string(gener) + "_" + to_string(gamer) + ".csv";
+    //jhg->save(fnombre);
 
     for (int i = 0; i < numPlayers; i++)
         delete[] transactions[i];

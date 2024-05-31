@@ -10,6 +10,10 @@
 #           (medium-term)
 #       - Maybe something like whether average popularity is larger than the average popularity from ~10 rounds ago
 #           (long-term)
+#   - Rounds:
+#       - How many rounds above/below 30 are we (since the GA uses 30 rounds)?
+#   - Population:
+#       - How many players above/below 10 are there (since the GA uses 10 agents)?
 
 # CAB assumption checkers:
 #   - Detect communities:
