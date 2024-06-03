@@ -178,9 +178,9 @@ class GeneAgent3(AbstractAgent):
     def assassinGenes(self):
         self.played_genes = False
 
-        self.genes["visualTrait"] = 50  # Foo
+        self.genes["visualTrait"] = 50  # Not used
         self.genes["alpha"] = 20  # Weight between positive and negative influence when computing modularity
-        self.genes["homophily"] = 50  # Foo
+        self.genes["homophily"] = 50  # Not used
         self.genes["otherishDebtLimits"] = 25  # How much the agent will give to another player without reciprocation
         self.genes[
             "coalitionTarget"] = 70  # The desired collective strength of the agent's community as a percentage of the whole
