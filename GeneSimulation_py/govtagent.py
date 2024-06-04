@@ -1,6 +1,7 @@
-from baseagent import AbstractAgent
+from GeneSimulation_py.baseagent import AbstractAgent
 
 import numpy as np
+
 
 class DummyGovtAgent(AbstractAgent):
 

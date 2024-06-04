@@ -1,17 +1,14 @@
-from simulator import GameSimulator
-from randomagent import RandomAgent
-from geneagent3 import GeneAgent3
-from humanagent import HumanAgent
-from assassinagent import AssassinAgent
-# from scriptagent import ScriptAgent
-from govtagent import DummyGovtAgent
-
+from GeneSimulation_py.simulator import GameSimulator
+from GeneSimulation_py.geneagent3 import GeneAgent3
+from GeneSimulation_py.humanagent import HumanAgent
+from GeneSimulation_py.assassinagent import AssassinAgent
+from GeneSimulation_py.govtagent import DummyGovtAgent
 import numpy as np
 import os
 import sys
 import random
-
-import time
+from typing import List
+from GeneSimulation_py.baseagent import AbstractAgent
 
 np.set_printoptions(precision=2, suppress=True)
 
@@ -157,15 +154,14 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
             # runningTotal = (0.8 * runningTotal) + (0.2 * sim.get_popularity())
             runningTotal += sim.get_popularity()
 
-    print("P:\n" + str(sim.engine.P))
+    # print("P:\n" + str(sim.engine.P))
 
     if humanInd >= 0:
         recordState(rounds, sim, humanInd,
                     True)  # This records data so that the java human player can interact with this engine
 
-    fnombre = "../Results/theGameLogs/log_" + str(gener) + "_" + str(
-        gamer) + ".csv" if folder_to_save_to is None else folder_to_save_to
-    sim.save(fnombre)
+    if folder_to_save_to is not None:
+        sim.save(folder_to_save_to)
 
     # if hasGovment == True:
     #     return sim.get_popularity()[1:], runningTotal / rounds
@@ -604,6 +600,19 @@ def define_initial_pops(init_pop, num_players):
         initial_pops[i] *= tot_start_pop
 
     return np.array(initial_pops)
+
+
+def run_with_specified_agents(players: List[AbstractAgent], folder_to_save_to: str = None, poverty_line: int = 0,
+                              initial_pop_setting: str = 'equal', numRounds: int = 30) -> np.array:
+    initial_pops = define_initial_pops(initial_pop_setting, len(players))
+
+    result, avePop = play_game(players, numRounds, 1000, 1000, initial_pops, poverty_line, False,
+                               folder_to_save_to)
+    # print("endPop: " + str(result))
+    # print("avePop: " + str(avePop))
+    # print("relPop: " + str(avePop / sum(avePop)))
+
+    return result
 
 
 # python3 main.py play [generationFolder] [popSize] [numGeneCopies] [gen] [numAgents] [numRounds] [best_agents/rnd_agents] [init_pop] [poverty_line] [deterministic/nondeterministic] [config]

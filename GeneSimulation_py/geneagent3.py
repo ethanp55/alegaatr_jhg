@@ -1,4 +1,4 @@
-from baseagent import AbstractAgent
+from GeneSimulation_py.baseagent import AbstractAgent
 import random
 import numpy as np
 import heapq
@@ -103,6 +103,47 @@ class GeneAgent3(AbstractAgent):
                     "joinCoop": np.random.randint(0, 101),  # Change Sep 21 (not used)
                 }
                 self.genes_long.append(gene_set)
+
+        elif geneStr == 'assassin':
+            self.genes_long = []
+            for i in range(0, self.num_gene_copies):
+                gene_set = {
+                    "visualTrait": 50,  # not used
+                    "homophily": 50,  # not used
+                    "alpha": 20,
+                    "otherishDebtLimits": 25,
+                    "coalitionTarget": 70,
+                    "fixedUsage": 50,
+                    "w_modularity": 100,
+                    "w_centrality": 50,
+                    "w_collective_strength": 80,
+                    "w_familiarity": 50,
+                    "w_prosocial": 70,
+                    "initialDefense": 20,
+                    "minKeep": 20,
+                    "defenseUpdate": 50,
+                    "defensePropensity": 50,
+                    "fearDefense": 0,
+                    "safetyFirst": 0,
+                    "pillageFury": 0,
+                    "pillageDelay": 10,
+                    "pillagePriority": 0,
+                    "pillageMargin": 0,
+                    "pillageCompanionship": 50,
+                    "pillageFriends": 0,
+                    "vengenceMultiplier": 100,
+                    "vengenceMax": 100,
+                    "vengencePriority": 100,
+                    "defendFriendMultiplier": 100,
+                    "defendFriendMax": 100,
+                    "defendFriendPriority": 90,
+                    "attackGoodGuys": 0,
+                    "limitingGive": 100,
+                    "groupAware": 0,
+                    "joinCoop": 0,  # not used
+                }
+                self.genes_long.append(gene_set)
+
         else:
             # read geneStr to set up the genotype
             words = geneStr.split("_")
@@ -169,7 +210,7 @@ class GeneAgent3(AbstractAgent):
         return num
 
     def getTracked(self):
-        f = open("ScenarioIndicator/theTracked.txt", "r")
+        f = open("../GeneSimulation_py/ScenarioIndicator/theTracked.txt", "r")
         val = int(f.readline())
         f.close()
 

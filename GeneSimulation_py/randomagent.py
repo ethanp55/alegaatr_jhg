@@ -1,6 +1,7 @@
-from baseagent import AbstractAgent
+from GeneSimulation_py.baseagent import AbstractAgent
 
 import numpy as np
+
 
 class RandomAgent(AbstractAgent):
 
@@ -24,4 +25,3 @@ class RandomAgent(AbstractAgent):
         transaction_vec[0] = tax_tkns if tax_tkns != 0 else transaction_vec[0]
         transaction_vec[player_idx] = np.abs(transaction_vec[player_idx])
         return transaction_vec
-

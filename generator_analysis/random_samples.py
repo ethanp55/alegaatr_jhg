@@ -101,7 +101,7 @@ def sample_from_clusters(original_samples: List, kmeans: KMeans, samples_per_clu
             if save:
                 vec_str = list(vec)
                 vec_str = [str(val) for val in vec_str]
-                gene_str = 'gene_' + '_'.join(vec_str) + ',0,0,0'
+                gene_str = 'gene_0_0_' + '_'.join(vec_str) + '_0,0,0,0'
                 gene_strings.append(gene_str)
             print()
 
@@ -157,7 +157,7 @@ embeddings = np.array(samples + training_samples)
 
 kmeans = KMeans(
     init="random",
-    n_clusters=16,
+    n_clusters=8,
     n_init='auto',
     random_state=1234
 )
@@ -165,4 +165,4 @@ kmeans.fit(embeddings)
 
 # show_embeddings(embeddings, kmeans, training_samples, training_colors)
 # cluster_averages(samples, kmeans)
-sample_from_clusters(samples, kmeans, save=True)
+sample_from_clusters(samples, kmeans, save=True, samples_per_cluster=2)

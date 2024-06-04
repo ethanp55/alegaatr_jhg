@@ -1,4 +1,4 @@
-from engine import JHGEngine
+from GeneSimulation_py.engine import JHGEngine
 
 
 class GameSimulator:

@@ -97,7 +97,8 @@ for folder in FOLDERS:
             scores.append(float(score))
 
 print('Reducing to two dimensions...')
-embeddings = TSNE(n_components=2).fit_transform(np.array(samples))
+# embeddings = TSNE(n_components=2).fit_transform(np.array(samples))
+embeddings = samples
 # kmeans = find_optimal_kmeans(embeddings, show_plot=True)
 
 kmeans = KMeans(
@@ -108,5 +109,5 @@ kmeans = KMeans(
 )
 kmeans.fit(embeddings)
 
-show_embeddings(embeddings, kmeans)
+# show_embeddings(embeddings, kmeans)
 cluster_averages(samples, scores, kmeans)

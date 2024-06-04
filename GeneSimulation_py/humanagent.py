@@ -1,9 +1,10 @@
-from baseagent import AbstractAgent
+from GeneSimulation_py.baseagent import AbstractAgent
 from os.path import exists
 
 import numpy as np
 import os
 import time
+
 
 class HumanAgent(AbstractAgent):
 
@@ -14,16 +15,14 @@ class HumanAgent(AbstractAgent):
         os.system("rm ../State/visualTraits.txt")
         self.gameParams = {}
 
-
     def setGameParams(self, gameParams, _forcedRandom):
         self.gameParams = gameParams
-
 
     def play_round(self, player_idx, round_num, received, popularities, influence, extra_data):
         numPlayers = len(received)
 
         while True:
-            
+
             if exists("../State/HumanAllocations.txt"):
                 input = open("../State/HumanAllocations.txt", "r")
                 r = int(input.readline())
