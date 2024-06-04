@@ -5,6 +5,9 @@ import heapq
 import sys
 import math
 import copy
+from aat.assumptions import Assumptions
+from aat.checker import AssumptionChecker
+from typing import Optional
 
 
 class CommunityEvaluation():
@@ -51,9 +54,10 @@ class CommunityEvaluation():
 
 class GeneAgent3(AbstractAgent):
 
-    def __init__(self, geneStr, _num_gene_copies):  # Change on Sep 21
+    def __init__(self, geneStr, _num_gene_copies, check_assumptions: bool = False):
         super().__init__()
         self.num_gene_copies = _num_gene_copies  # Change on Sep 21
+        self.checker = AssumptionChecker() if check_assumptions else None
         self.whoami = "gene"
         self.count = 0
         self.relativeFitness = 0.0
@@ -201,6 +205,12 @@ class GeneAgent3(AbstractAgent):
         self.randCount = 0
 
         fp.close()
+
+    def estimate_assumptions(self) -> Optional[Assumptions]:
+        if self.checker is not None:
+            return self.checker.estimate_assumptions()
+
+        return None
 
     def getRand(self):
         num = self.randNums[self.randCount]

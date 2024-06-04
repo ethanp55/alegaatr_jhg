@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+from typing import List
+
+
 # Progress checkers:
 #   - Relative popularity
 #       - Could have a few assumptions around something like percentiles or even quartiles (25th, 50th, 90th, etc.)
@@ -54,6 +58,12 @@
 #   - Otherwise, initial popularity is "power"
 
 
+@dataclass
 class Assumptions:
-    def __init__(self) -> None:
-        pass
+    foo: float
+
+    def alignment_vector(self) -> List[float]:
+        attribute_names = self.__dict__.keys()
+        tup = [self.__getattribute__(name) for name in attribute_names]
+
+        return tup
