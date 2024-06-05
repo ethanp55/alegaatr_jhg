@@ -206,9 +206,9 @@ class GeneAgent3(AbstractAgent):
 
         fp.close()
 
-    def estimate_assumptions(self) -> Optional[Assumptions]:
+    def assumptions(self) -> Optional[Assumptions]:
         if self.checker is not None:
-            return self.checker.estimate_assumptions()
+            return self.checker.assumptions()
 
         return None
 
@@ -283,6 +283,12 @@ class GeneAgent3(AbstractAgent):
         return theStr
 
     def play_round(self, player_idx, round_num, received, popularities, influence, extra_data):
+        # Progress checkers
+        if self.checker is not None:
+            self.checker.progress_checkers(player_idx, round_num, popularities)
+            self.checker.graph_connectedness(influence)
+            self.checker.graph_edge_percentages(influence)
+
         self.printT(player_idx, str(received))
 
         # set up some variables
@@ -1984,6 +1990,9 @@ class GeneAgent3(AbstractAgent):
     def compute_signed_modularity(self, num_players, cur_comms, A_pos, A_neg):
         modu = self.alpha * self.compute_modularity(num_players, cur_comms, A_pos)
         modu -= (1.0 - self.alpha) * self.compute_modularity(num_players, cur_comms, A_neg)
+
+        if self.checker is not None:
+            self.checker.changes_in_modularity(modu)
 
         return modu
 

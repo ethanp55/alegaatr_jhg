@@ -2,48 +2,27 @@ from dataclasses import dataclass
 from typing import List
 
 
-# Progress checkers:
-#   - Relative popularity
-#       - Could have a few assumptions around something like percentiles or even quartiles (25th, 50th, 90th, etc.)
-#       - Could have an assumption about whether our position is better than previous round (short-term)
-#       - Could have an assumption about whether our position is better than ~5 rounds ago (medium-term)
-#       - Could have an assumption about whether our position is better than ~10 rounds ago (long-term)
-#   - Growing more popular:
-#       - Did popularity increase since the previous round (short-term)?
-#       - Maybe something like whether average popularity is larger than the average popularity from ~5 rounds ago
-#           (medium-term)
-#       - Maybe something like whether average popularity is larger than the average popularity from ~10 rounds ago
-#           (long-term)
-#   - Rounds:
-#       - How many rounds above/below 30 are we (since the GA uses 30 rounds)?
-#   - Population:
-#       - How many players above/below 10 are there (since the GA uses 10 agents)?
-
 # CAB assumption checkers:
-#   - Detect communities:
-#       - Is the graph reasonably connected (not sure if this important or useful)?
-#       - Has modularity significantly changed recently?
-#       - Has the distribution of edge weights (both positive and negative) significantly changed recently?
+#   - Detect communities (6/10):
 #       - Have there been recent significant changes in community memberships?
 #       - Are the communities and/or modularity similar when IHN is calculated with a min instead of a max?
 #       - Are the communities and/or modularity similar when IHP is calculated with a min instead of a max?
 #
-#   - Determine desired community (these pertain to the specific community chosen by the CAB agent):
-#       - 1 - Have there been recent significant changes in modularity?
+#   - Determine desired community (these pertain to the specific community chosen by the CAB agent) (6/11 - 6/12):
 #       - 2.1 - Have there been recent significant changes in collective community popularity?
 #       - 2.2 - Have there been recent significant changes in closeness to target group strength?
 #       - 3 - Have there been recent significant changes in prominence?
 #       - 4 - Have there been recent significant changes in familiarity scores?
 #       - 5 - Have there been recent significant changes in prosocial behavior?
 #
-#   - Determine number of tokens to keep:
+#   - Determine number of tokens to keep (6/13):
 #       - Are the attack predictions accurate?
 #
-#   - Determine who to attack:
+#   - Determine who to attack (6/13):
 #       - Does the agent receive profit from attacking player i?
 #       - Does player i receive damage?
 #
-#   - Give tokens to members of chosen community:
+#   - Give tokens to members of chosen community (6/14):
 #       - Are my friends reciprocating an equal or greater amount of popularity?
 
 # Assumptions about other players:
@@ -60,7 +39,25 @@ from typing import List
 
 @dataclass
 class Assumptions:
-    foo: float
+    improved_from_prev_round: float
+    improved_medium_term: float
+    improved_long_term: float
+    rank: float
+    rank_improved_from_prev_round: float
+    rank_improved_medium_term: float
+    rank_improved_long_term: float
+    percentile: float
+    below_30_rounds: float
+    above_30_rounds: float
+    below_10_players: float
+    above_10_players: float
+    positive_density: float
+    negative_density: float
+    percentage_of_positive_edges: float
+    percentage_of_neutral_edges: float
+    percentage_of_negative_edges: float
+    modularity_above_ema: float
+    modularity_below_ema: float
 
     def alignment_vector(self) -> List[float]:
         attribute_names = self.__dict__.keys()
