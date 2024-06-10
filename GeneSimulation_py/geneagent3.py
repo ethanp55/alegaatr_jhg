@@ -58,6 +58,7 @@ class GeneAgent3(AbstractAgent):
         super().__init__()
         self.num_gene_copies = _num_gene_copies  # Change on Sep 21
         self.checker = AssumptionChecker() if check_assumptions else None
+        self.run_modularity_checker = False
         self.whoami = "gene"
         self.count = 0
         self.relativeFitness = 0.0
@@ -283,11 +284,11 @@ class GeneAgent3(AbstractAgent):
         return theStr
 
     def play_round(self, player_idx, round_num, received, popularities, influence, extra_data):
+        self.run_modularity_checker = True
+
         # Progress checkers
         if self.checker is not None:
             self.checker.progress_checkers(player_idx, round_num, popularities)
-            self.checker.graph_connectedness(influence)
-            self.checker.graph_edge_percentages(influence)
 
         self.printT(player_idx, str(received))
 
@@ -324,8 +325,29 @@ class GeneAgent3(AbstractAgent):
             #     self.compute_homophily(num_players)
 
         # group analysis and choice
+        ihn_max_communities, ihp_min_communities = None, None
+
+        if self.checker is not None:
+            ihn_max_communities, _ = self.group_analysis(round_num, num_players, player_idx, popularities,
+                                                         influence, ihn_max=True)
+            ihp_min_communities, _ = self.group_analysis(round_num, num_players, player_idx, popularities,
+                                                         influence, ihp_min=True)
+
         communities, selected_community = self.group_analysis(round_num, num_players, player_idx, popularities,
                                                               influence)
+
+        # Determine desired community checkers
+        if self.checker is not None:
+            self.checker.changes_in_collective_strength(selected_community)
+            self.checker.how_close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
+            self.checker.how_many_members_missing(selected_community, communities)
+
+        # Detect community checkers
+        if self.checker is not None:
+            assert ihn_max_communities is not None and ihp_min_communities is not None
+            self.checker.graph_connectedness(influence)
+            self.checker.graph_edge_percentages(influence)
+            self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities)
 
         # figure out how many tokens to keep
         self.estimate_keeping(player_idx, num_players, num_tokens, communities)
@@ -370,6 +392,11 @@ class GeneAgent3(AbstractAgent):
         groups_alloc, num_group_gives = self.group_givings(round_num, num_players, num_tokens,
                                                            num_tokens - num_attack_toks - guardo_toks, player_idx,
                                                            influence, popularities, selected_community, attack_alloc)
+
+        # Give tokens checkers
+        if self.checker is not None:
+            self.checker.percentage_of_players_to_give_to(groups_alloc)
+            self.checker.friends_are_reciprocating(influence, groups_alloc)
 
         # update some variables
         transaction_vec = groups_alloc - attack_alloc
@@ -740,26 +767,27 @@ class GeneAgent3(AbstractAgent):
         if player_idx == self.theTracked:
             print(s)
 
-    def compute_adjacency(self, num_players):
+    def compute_adjacency(self, num_players, ihn_max=False):
         A = self.infl_pos.copy()
         for i in range(num_players):
             A[i][i] = self.infl_pos[i][i]
             for j in range(i + 1, num_players):
                 theAve = (self.infl_pos[i][j] + self.infl_pos[j][i]) / 2.0
-                theMin = min(self.infl_pos[i][j], self.infl_pos[j][i])
+                theMin = max(self.infl_pos[i][j], self.infl_pos[j][i]) if ihn_max else min(self.infl_pos[i][j],
+                                                                                           self.infl_pos[j][i])
                 A[i][j] = (theAve + theMin) / 2.0
                 A[j][i] = A[i][j]
 
         return A
 
-    def compute_neg_adjacency(self, num_players):
+    def compute_neg_adjacency(self, num_players, ihp_min=False):
         A = self.infl_neg.copy()
         for i in range(num_players):
             A[i][i] = self.infl_neg[i][i]
             for j in range(i + 1, num_players):
-                theAve = (self.infl_neg[i][j] + self.infl_neg[j][i]) / 2.0
-                theMax = max(self.infl_neg[i][j], self.infl_neg[j][i])
-                A[i][j] = theMax  # (theAve + theMax) / 2.0
+                theMax = min(self.infl_neg[i][j], self.infl_neg[j][i]) if ihp_min else max(self.infl_neg[i][j],
+                                                                                           self.infl_neg[j][i])
+                A[i][j] = theMax
                 A[j][i] = A[i][j]
 
         return A
@@ -1566,17 +1594,16 @@ class GeneAgent3(AbstractAgent):
 
         return fear_tokens
 
-    def group_analysis(self, round_num, num_players, player_idx, popularities, influence):
+    def group_analysis(self, round_num, num_players, player_idx, popularities, influence, ihn_max=False, ihp_min=False):
         # B = [[29.0, 0, 13, 2, 6, 0, 0, 23, 16, 0, 2],[2, 14, 0, 19, 1, 30, 8, 1, 0, 16, 2],[13, 0, 16, 3, 7, 0, 3, 25, 13, 0, 2],[2, 13, 2, 25, -7, 7, 0, 4, -8, 14, 0],[3, 2, 3, -23, 39, 2, 0, 9, 9, 3, 2],[0, 37, 0, 13, 0, 12, 33, 0, 0, 3, 0],[1, 11, 1, 0, 0, 34, 19, 0, 6, 12, 0],[22, 0, 19, -29, 14, 0, 1, 45, 3, 0, 0],[19, 2, 17, 0, 22, 0, 4, 6, 10, 1, 2],[1, 12, 0, 19, -19, 4, 7, 0, -13, 55, 0],[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 74]]
         # influence = np.array(B)
         # self.infl_pos = np.positive(influence).clip(0)
         # self.infl_neg = np.negative(influence).clip(0)
         # self.scaled_back_nums = np.ones(num_players, dtype=float)
+        A_pos = self.compute_adjacency(num_players, ihn_max)
+        A_neg = self.compute_neg_adjacency(num_players, ihp_min)
 
         if round_num == 0:
-            A_pos = self.compute_adjacency(num_players)
-            A_neg = self.compute_neg_adjacency(num_players)
-
             communities, modularity = self.louvain_c_method_phase1(num_players, A_pos, A_neg)
             self.printT(player_idx, "")
             self.printT(player_idx, " communities: " + str(communities))
@@ -1589,9 +1616,6 @@ class GeneAgent3(AbstractAgent):
 
             self.printT(player_idx, "chosen community: " + str(elijo.s))
         else:
-            A_pos = self.compute_adjacency(num_players)
-            A_neg = self.compute_neg_adjacency(num_players)
-
             # self.printT(player_idx, "A_pos")
             # self.printT(player_idx, str(A_pos))
             # self.printT(player_idx, "A_neg")
@@ -1991,8 +2015,9 @@ class GeneAgent3(AbstractAgent):
         modu = self.alpha * self.compute_modularity(num_players, cur_comms, A_pos)
         modu -= (1.0 - self.alpha) * self.compute_modularity(num_players, cur_comms, A_neg)
 
-        if self.checker is not None:
+        if self.checker is not None and self.run_modularity_checker:
             self.checker.changes_in_modularity(modu)
+            self.run_modularity_checker = False
 
         return modu
 

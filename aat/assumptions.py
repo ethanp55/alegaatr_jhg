@@ -3,27 +3,20 @@ from typing import List
 
 
 # CAB assumption checkers:
-#   - Detect communities (6/10):
-#       - Have there been recent significant changes in community memberships?
-#       - Are the communities and/or modularity similar when IHN is calculated with a min instead of a max?
-#       - Are the communities and/or modularity similar when IHP is calculated with a min instead of a max?
-#
-#   - Determine desired community (these pertain to the specific community chosen by the CAB agent) (6/11 - 6/12):
+#   - Determine desired community (these pertain to the specific community chosen by the CAB agent) (6/11):
 #       - 2.1 - Have there been recent significant changes in collective community popularity?
 #       - 2.2 - Have there been recent significant changes in closeness to target group strength?
 #       - 3 - Have there been recent significant changes in prominence?
 #       - 4 - Have there been recent significant changes in familiarity scores?
 #       - 5 - Have there been recent significant changes in prosocial behavior?
+#       - 6 - What are the different weights (maybe)?
 #
-#   - Determine number of tokens to keep (6/13):
+#   - Determine number of tokens to keep (6/12):
 #       - Are the attack predictions accurate?
 #
 #   - Determine who to attack (6/13):
 #       - Does the agent receive profit from attacking player i?
 #       - Does player i receive damage?
-#
-#   - Give tokens to members of chosen community (6/14):
-#       - Are my friends reciprocating an equal or greater amount of popularity?
 
 # Assumptions about other players:
 #   - Not sure if we need these, because the CAB agent checkers might tease most/all of these out
@@ -58,6 +51,17 @@ class Assumptions:
     percentage_of_negative_edges: float
     modularity_above_ema: float
     modularity_below_ema: float
+    communities_changes_from_prev: float
+    communities_diffs_with_ihn_max: float
+    communities_diffs_with_ihp_min: float
+    below_prev_collective_strength: float
+    above_prev_collective_strength: float
+    below_target_strength: float
+    above_target_strength: float
+    percent_of_players_needed_for_desired_community: float
+
+    percent_of_players_to_give_to: float
+    percent_of_friends_who_reciprocate: float
 
     def alignment_vector(self) -> List[float]:
         attribute_names = self.__dict__.keys()
