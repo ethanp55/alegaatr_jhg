@@ -3,18 +3,7 @@ from typing import List
 
 
 # CAB assumption checkers:
-#   - Determine desired community (these pertain to the specific community chosen by the CAB agent) (6/11):
-#       - 2.1 - Have there been recent significant changes in collective community popularity?
-#       - 2.2 - Have there been recent significant changes in closeness to target group strength?
-#       - 3 - Have there been recent significant changes in prominence?
-#       - 4 - Have there been recent significant changes in familiarity scores?
-#       - 5 - Have there been recent significant changes in prosocial behavior?
-#       - 6 - What are the different weights (maybe)?
-#
-#   - Determine number of tokens to keep (6/12):
-#       - Are the attack predictions accurate?
-#
-#   - Determine who to attack (6/13):
+#   - Determine who to attack (6/12):
 #       - Does the agent receive profit from attacking player i?
 #       - Does player i receive damage?
 
@@ -59,12 +48,24 @@ class Assumptions:
     below_target_strength: float
     above_target_strength: float
     percent_of_players_needed_for_desired_community: float
+    prominence_below_avg: float
+    prominence_above_avg: float
+    prominence_max_val: float
+    prominence_rank_val: float
+    familiarity_below_modularity: float
+    familiarity_above_modularity: float
+    prosocial_score: float
+    percent_tokens_kept: float
+    percent_attackers: float
+    percent_pop_of_attackers: float
+    tokens_kept_below_stolen: float
+    tokens_kept_above_stolen: float
 
     percent_of_players_to_give_to: float
     percent_of_friends_who_reciprocate: float
 
     def alignment_vector(self) -> List[float]:
         attribute_names = self.__dict__.keys()
-        tup = [self.__getattribute__(name) for name in attribute_names]
+        tup = [round(self.__getattribute__(name), 5) for name in attribute_names]
 
         return tup

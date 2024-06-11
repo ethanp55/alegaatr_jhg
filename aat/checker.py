@@ -6,13 +6,6 @@ from scipy.stats import percentileofscore
 from typing import List, Set
 
 
-#   - Determine desired community (these pertain to the specific community chosen by the CAB agent) (6/11):
-#       - 3 - Have there been recent significant changes in prominence?
-#       - 4 - Have there been recent significant changes in familiarity scores?
-#       - 5 - Have there been recent significant changes in prosocial behavior?
-#       - 6 - What are the different weights (maybe)?
-
-
 # Class that contains all the alignment checkers
 class AssumptionChecker:
     def __init__(self) -> None:
@@ -24,6 +17,8 @@ class AssumptionChecker:
         self.prev_communities = None
         self.n_players, self.player_idx = None, None
         self.prev_collective_strength = None
+        self.prev_tokens_kept = None
+        self.n_tokens = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers  -----------------------------------------------------------------
@@ -63,6 +58,26 @@ class AssumptionChecker:
         self.below_target_strength = 0.5
         self.above_target_strength = 0.5
         self.percent_of_players_needed_for_desired_community = 0.5
+        self.prominence_below_avg = 0.5
+        self.prominence_above_avg = 0.5
+        self.prominence_max_val = 0.5
+        self.prominence_rank_val = 0.5
+        self.familiarity_below_modularity = 0.5
+        self.familiarity_above_modularity = 0.5
+        self.prosocial_score = 0.5
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Assumption estimates from keep tokens ------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
+        self.percent_tokens_kept = 0.5
+        self.percent_attackers = 0.5
+        self.percent_pop_of_attackers = 0.5
+        self.tokens_kept_below_stolen = 0.5
+        self.tokens_kept_above_stolen = 0.5
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Assumption estimates from attacking other players ------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from give tokens ------------------------------------------------------------------------
@@ -260,7 +275,7 @@ class AssumptionChecker:
             self.below_target_strength = 0.0
             self.above_target_strength = target / collective_strength
 
-    def how_many_members_missing(self, desired_community, communities: List[Set[int]]):
+    def how_many_members_missing(self, desired_community, communities: List[Set[int]]) -> None:
         desired_group = desired_community.s
         player_group = None
 
@@ -274,6 +289,87 @@ class AssumptionChecker:
         assert self.n_players >= n_differences
 
         self.percent_of_players_needed_for_desired_community = n_differences / self.n_players
+
+    def prominence(self, desired_community, popularities) -> None:
+        s = desired_community.s
+        group_sum, mx, num_greater = 0, 0.0, 0
+        for i in s:
+            group_sum += popularities[i]
+            if popularities[i] > mx:
+                mx = popularities[i]
+            if popularities[i] > popularities[self.player_idx]:
+                num_greater += 1
+
+        if (group_sum > 0.0) and (len(s) > 1):
+            ave_sum = group_sum / len(s)
+            avg_val = popularities[self.player_idx] / ave_sum
+            max_val = popularities[self.player_idx] / mx
+            rank_val = 1 - (num_greater / (len(s) - 1.0))
+
+        else:
+            avg_val, max_val, rank_val = 1.0, 1.0, 1.0
+
+        if avg_val < 1.0:
+            self.prominence_below_avg = avg_val
+            self.prominence_above_avg = 0.0
+
+        else:
+            self.prominence_below_avg = 0.0
+            self.prominence_above_avg = 1 / avg_val
+
+        self.prominence_max_val, self.prominence_rank_val = max_val, rank_val
+
+    def modularity_vs_familiarity(self, desired_community) -> None:
+        modularity, familiarity = desired_community.modularity, desired_community.familiarity
+
+        if familiarity < modularity:
+            self.familiarity_below_modularity = familiarity / modularity if modularity > 0 else 0.0
+            self.familiarity_above_modularity = 0.0
+
+        else:
+            self.familiarity_below_modularity = 0.0
+            self.familiarity_above_modularity = modularity / familiarity if familiarity > 0 else 0.0
+
+    def prosocial(self, desired_community) -> None:
+        self.prosocial_score = desired_community.prosocial
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Keep tokens checkers ---------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    def keep_tokens(self, tokens_kept: int, received: np.array, popularities: np.array) -> None:
+        if self.n_tokens is None:
+            self.n_tokens = self.n_players * 2
+
+        received_adjusted = received * self.n_tokens
+
+        if self.prev_tokens_kept is not None:
+            tokens_stolen, n_attackers = 0, 0
+            pop_sum, cumulative_pop_of_attackers = sum(popularities), 0
+
+            for i, tokens_received in enumerate(list(received_adjusted)):
+                if tokens_received < 0 and i != self.player_idx:
+                    tokens_stolen += abs(tokens_received)
+                    n_attackers += 1
+                    cumulative_pop_of_attackers += popularities[i]
+
+            self.percent_tokens_kept = self.prev_tokens_kept / self.n_tokens
+            self.percent_attackers = n_attackers / self.n_players
+            self.percent_pop_of_attackers = cumulative_pop_of_attackers / pop_sum
+
+            if self.prev_tokens_kept < tokens_stolen:
+                self.tokens_kept_below_stolen = self.prev_tokens_kept / tokens_stolen if tokens_stolen > 0 else 0.0
+                self.tokens_kept_above_stolen = 0.0
+
+            else:
+                self.tokens_kept_below_stolen = 0.0
+                self.tokens_kept_above_stolen = tokens_stolen / self.prev_tokens_kept if self.prev_tokens_kept > 0 \
+                    else 0.0
+
+        self.prev_tokens_kept = tokens_kept
+        
+    # ------------------------------------------------------------------------------------------------------------------
+    # Attack other players checkers ------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------------------------------------------
     # Give tokens checkers ---------------------------------------------------------------------------------------------
@@ -328,6 +424,18 @@ class AssumptionChecker:
             self.below_target_strength,
             self.above_target_strength,
             self.percent_of_players_needed_for_desired_community,
+            self.prominence_below_avg,
+            self.prominence_above_avg,
+            self.prominence_max_val,
+            self.prominence_rank_val,
+            self.familiarity_below_modularity,
+            self.familiarity_above_modularity,
+            self.prosocial_score,
+            self.percent_tokens_kept,
+            self.percent_attackers,
+            self.percent_pop_of_attackers,
+            self.tokens_kept_below_stolen,
+            self.tokens_kept_above_stolen,
 
             self.percent_of_players_to_give_to,
             self.percent_of_friends_who_reciprocate

@@ -341,6 +341,9 @@ class GeneAgent3(AbstractAgent):
             self.checker.changes_in_collective_strength(selected_community)
             self.checker.how_close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
             self.checker.how_many_members_missing(selected_community, communities)
+            self.checker.prominence(selected_community, popularities)
+            self.checker.modularity_vs_familiarity(selected_community)
+            self.checker.prosocial(selected_community)
 
         # Detect community checkers
         if self.checker is not None:
@@ -404,6 +407,10 @@ class GeneAgent3(AbstractAgent):
         # Change made on 6/16
         guardo_toks = num_tokens - sum(np.absolute(transaction_vec))
         transaction_vec[player_idx] += guardo_toks
+
+        # Keep tokens checkers
+        if self.checker is not None:
+            self.checker.keep_tokens(guardo_toks, received, popularities)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec
