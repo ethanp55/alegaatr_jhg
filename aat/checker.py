@@ -22,6 +22,7 @@ class AssumptionChecker:
         self.n_players, self.player_idx = None, None
         self.prev_collective_strength = None
         self.prev_tokens_kept = None
+        self.prev_popularity_k = None
         self.n_tokens = None
         self.prev_attack_tokens = None
         self.prev_attack_type = None
@@ -370,7 +371,8 @@ class AssumptionChecker:
             self.percent_tokens_kept = self.prev_tokens_kept / self.n_tokens
             self.percent_attackers = n_attackers / self.n_players
             self.percent_pop_of_attackers = cumulative_pop_of_attackers / pop_sum
-            self.percent_impact_of_attackers = impact_of_attackers / pop_sum
+            self.percent_impact_of_attackers = min(impact_of_attackers / self.prev_popularity_k, 1.0) \
+                if self.prev_popularity_k > 0 else 0.0
 
             if self.prev_tokens_kept < tokens_stolen:
                 self.tokens_kept_below_stolen = self.prev_tokens_kept / tokens_stolen if tokens_stolen > 0 else 0.0
@@ -382,6 +384,7 @@ class AssumptionChecker:
                     else 0.0
 
         self.prev_tokens_kept = tokens_kept
+        self.prev_popularity_k = popularities[self.player_idx]
 
     # ------------------------------------------------------------------------------------------------------------------
     # Attack other players checkers ------------------------------------------------------------------------------------
