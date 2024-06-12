@@ -410,7 +410,7 @@ class GeneAgent3(AbstractAgent):
 
         # Attack checkers
         if self.checker is not None:
-            self.checker.attack_was_successful(attack_alloc, v, guardo_toks)
+            self.checker.attack_was_successful(attack_alloc, v, guardo_toks, popularities)
 
         # Keep tokens checkers
         if self.checker is not None:

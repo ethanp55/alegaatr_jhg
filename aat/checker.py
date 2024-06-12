@@ -26,6 +26,7 @@ class AssumptionChecker:
         self.prev_attack_tokens = None
         self.prev_attack_type = None
         self.prev_tokens_kept_a = None
+        self.prev_popularities_a = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers  -----------------------------------------------------------------
@@ -385,7 +386,9 @@ class AssumptionChecker:
     # ------------------------------------------------------------------------------------------------------------------
     # Attack other players checkers ------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
-    def attack_was_successful(self, attack_tokens: np.array, v: np.array, tokens_kept: int) -> None:
+    def attack_was_successful(self, attack_tokens: np.array, v: np.array, tokens_kept: int,
+                              popularities: np.array) -> None:
+
         if self.prev_attack_tokens is not None:
             player_that_was_attacked, tokens_stolen = None, None
 
@@ -395,12 +398,15 @@ class AssumptionChecker:
                     break
 
             if player_that_was_attacked is not None:
-                my_impact_on_that_player = v[self.player_idx][player_that_was_attacked]
+                my_impact_on_that_player = abs(v[self.player_idx][player_that_was_attacked])
+                my_popularity, their_popularity = \
+                    self.prev_popularities_a[self.player_idx], self.prev_popularities_a[player_that_was_attacked]
                 percent_stolen = tokens_stolen / (tokens_stolen + self.prev_tokens_kept_a)
                 my_benefit = v[self.player_idx][self.player_idx] * percent_stolen
 
-                self.my_attack_damaged_other_player = float(my_impact_on_that_player < 0)
-                self.my_attack_benefited_me = float(my_benefit > 0)
+                self.my_attack_damaged_other_player = min(my_impact_on_that_player / their_popularity, 1.0) \
+                    if their_popularity > 0 else 0.0
+                self.my_attack_benefited_me = min(my_benefit / my_popularity, 1.0) if my_popularity > 0 else 0.0
 
             else:
                 self.my_attack_damaged_other_player = 0.0
@@ -408,6 +414,7 @@ class AssumptionChecker:
 
         self.prev_attack_tokens = attack_tokens
         self.prev_tokens_kept_a = tokens_kept
+        self.prev_popularities_a = popularities
 
     def attack_type(self, attack_type: str) -> None:
         if self.prev_attack_type is not None:
