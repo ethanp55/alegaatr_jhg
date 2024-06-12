@@ -2,11 +2,6 @@ from dataclasses import dataclass
 from typing import List
 
 
-# CAB assumption checkers:
-#   - Determine who to attack (6/12):
-#       - Does the agent receive profit from attacking player i?
-#       - Does player i receive damage?
-
 # Assumptions about other players:
 #   - Not sure if we need these, because the CAB agent checkers might tease most/all of these out
 
@@ -58,9 +53,14 @@ class Assumptions:
     percent_tokens_kept: float
     percent_attackers: float
     percent_pop_of_attackers: float
+    percent_impact_of_attackers: float
     tokens_kept_below_stolen: float
     tokens_kept_above_stolen: float
-
+    my_attack_damaged_other_player: float
+    my_attack_benefited_me: float
+    vengence_attack: float
+    defend_friend_attack: float
+    pillage_attack: float
     percent_of_players_to_give_to: float
     percent_of_friends_who_reciprocate: float
 

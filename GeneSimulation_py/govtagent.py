@@ -11,7 +11,7 @@ class DummyGovtAgent(AbstractAgent):
         self.tax_rate = tax_rate
         self.allow_keep = False
 
-    def get_player_taxes(self, player_idx, recieved, popularities, influence, extra_data):
+    def get_player_taxes(self, player_idx, recieved, popularities, influence, extra_data, v):
         tkns = len(popularities) * 2
         taxes = self.tax_rate * tkns
         return taxes

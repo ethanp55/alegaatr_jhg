@@ -283,7 +283,7 @@ class GeneAgent3(AbstractAgent):
 
         return theStr
 
-    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data):
+    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v):
         self.run_modularity_checker = True
 
         # Progress checkers
@@ -408,9 +408,13 @@ class GeneAgent3(AbstractAgent):
         guardo_toks = num_tokens - sum(np.absolute(transaction_vec))
         transaction_vec[player_idx] += guardo_toks
 
+        # Attack checkers
+        if self.checker is not None:
+            self.checker.attack_was_successful(attack_alloc, v, guardo_toks)
+
         # Keep tokens checkers
         if self.checker is not None:
-            self.checker.keep_tokens(guardo_toks, received, popularities)
+            self.checker.keep_tokens(guardo_toks, received, popularities, v)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec
@@ -1145,12 +1149,12 @@ class GeneAgent3(AbstractAgent):
 
         attack_possibilities = []
         if (pillage_choice[0] >= 0):
-            attack_possibilities.append((self.genes["pillagePriority"], pillage_choice[0], pillage_choice[1]))
+            attack_possibilities.append((self.genes["pillagePriority"], pillage_choice[0], pillage_choice[1], 'p'))
         if (vengence_choice[0] >= 0):
-            attack_possibilities.append((self.genes["vengencePriority"], vengence_choice[0], vengence_choice[1]))
+            attack_possibilities.append((self.genes["vengencePriority"], vengence_choice[0], vengence_choice[1], 'v'))
         if (defend_friend_choice[0] >= 0):
             attack_possibilities.append(
-                (self.genes["defendFriendPriority"], defend_friend_choice[0], defend_friend_choice[1]))
+                (self.genes["defendFriendPriority"], defend_friend_choice[0], defend_friend_choice[1], 'df'))
 
         # # decide which attack to do
         if len(attack_possibilities) > 0:
@@ -1160,8 +1164,15 @@ class GeneAgent3(AbstractAgent):
                     attack_possibilities[0][2] != defend_friend_choice[1]):
                 self.expected_defend_friend_damage = -99999
             attack_toks[attack_possibilities[0][1]] = attack_possibilities[0][2]
+
+            if self.checker is not None:
+                attack_type = attack_possibilities[0][-1]
+                self.checker.attack_type(attack_type)
         else:
             self.expected_defend_friend_damage = -99999
+
+            if self.checker is not None:
+                self.checker.attack_type('none')
 
         # # self.printT(player_idx, "        expected_defend_friend_damage: " + str(self.expected_defend_friend_damage))
 

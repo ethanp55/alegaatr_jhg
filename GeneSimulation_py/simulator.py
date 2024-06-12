@@ -11,6 +11,9 @@ class GameSimulator:
             } for i in range(self.engine.N)
         }
 
+    def get_v(self):
+        return self.engine.get_v()
+
     def get_influence(self):
         return self.engine.get_influence()
 

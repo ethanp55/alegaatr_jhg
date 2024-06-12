@@ -134,7 +134,8 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
                 T_prev[:, i],
                 sim.get_popularity(),
                 sim.get_influence(),
-                sim.get_extra_data(i)
+                sim.get_extra_data(i),
+                sim.get_v()
             )
 
         # print("transactions:")

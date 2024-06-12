@@ -6,6 +6,10 @@ from scipy.stats import percentileofscore
 from typing import List, Set
 
 
+#   - Determine who to attack (6/12):
+#       - Does the agent receive profit from attacking player i?
+#       - Does player i receive damage?
+
 # Class that contains all the alignment checkers
 class AssumptionChecker:
     def __init__(self) -> None:
@@ -19,6 +23,9 @@ class AssumptionChecker:
         self.prev_collective_strength = None
         self.prev_tokens_kept = None
         self.n_tokens = None
+        self.prev_attack_tokens = None
+        self.prev_attack_type = None
+        self.prev_tokens_kept_a = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers  -----------------------------------------------------------------
@@ -72,12 +79,18 @@ class AssumptionChecker:
         self.percent_tokens_kept = 0.5
         self.percent_attackers = 0.5
         self.percent_pop_of_attackers = 0.5
+        self.percent_impact_of_attackers = 0.5
         self.tokens_kept_below_stolen = 0.5
         self.tokens_kept_above_stolen = 0.5
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from attacking other players ------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
+        self.my_attack_damaged_other_player = 0.0
+        self.my_attack_benefited_me = 0.0
+        self.vengence_attack = 0.0
+        self.defend_friend_attack = 0.0
+        self.pillage_attack = 0.0
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from give tokens ------------------------------------------------------------------------
@@ -336,25 +349,27 @@ class AssumptionChecker:
     # ------------------------------------------------------------------------------------------------------------------
     # Keep tokens checkers ---------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
-    def keep_tokens(self, tokens_kept: int, received: np.array, popularities: np.array) -> None:
+    def keep_tokens(self, tokens_kept: int, received: np.array, popularities: np.array, v: np.array) -> None:
         if self.n_tokens is None:
             self.n_tokens = self.n_players * 2
 
         received_adjusted = received * self.n_tokens
 
         if self.prev_tokens_kept is not None:
-            tokens_stolen, n_attackers = 0, 0
+            tokens_stolen, n_attackers, impact_of_attackers = 0, 0, 0
             pop_sum, cumulative_pop_of_attackers = sum(popularities), 0
 
             for i, tokens_received in enumerate(list(received_adjusted)):
                 if tokens_received < 0 and i != self.player_idx:
                     tokens_stolen += abs(tokens_received)
                     n_attackers += 1
+                    impact_of_attackers += abs(v[i][self.player_idx])
                     cumulative_pop_of_attackers += popularities[i]
 
             self.percent_tokens_kept = self.prev_tokens_kept / self.n_tokens
             self.percent_attackers = n_attackers / self.n_players
             self.percent_pop_of_attackers = cumulative_pop_of_attackers / pop_sum
+            self.percent_impact_of_attackers = impact_of_attackers / pop_sum
 
             if self.prev_tokens_kept < tokens_stolen:
                 self.tokens_kept_below_stolen = self.prev_tokens_kept / tokens_stolen if tokens_stolen > 0 else 0.0
@@ -366,10 +381,57 @@ class AssumptionChecker:
                     else 0.0
 
         self.prev_tokens_kept = tokens_kept
-        
+
     # ------------------------------------------------------------------------------------------------------------------
     # Attack other players checkers ------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
+    def attack_was_successful(self, attack_tokens: np.array, v: np.array, tokens_kept: int) -> None:
+        if self.prev_attack_tokens is not None:
+            player_that_was_attacked, tokens_stolen = None, None
+
+            for i, tokens in enumerate(list(self.prev_attack_tokens)):
+                if tokens > 0:
+                    player_that_was_attacked, tokens_stolen = i, tokens
+                    break
+
+            if player_that_was_attacked is not None:
+                my_impact_on_that_player = v[self.player_idx][player_that_was_attacked]
+                percent_stolen = tokens_stolen / (tokens_stolen + self.prev_tokens_kept_a)
+                my_benefit = v[self.player_idx][self.player_idx] * percent_stolen
+
+                self.my_attack_damaged_other_player = float(my_impact_on_that_player < 0)
+                self.my_attack_benefited_me = float(my_benefit > 0)
+
+            else:
+                self.my_attack_damaged_other_player = 0.0
+                self.my_attack_benefited_me = 0.0
+
+        self.prev_attack_tokens = attack_tokens
+        self.prev_tokens_kept_a = tokens_kept
+
+    def attack_type(self, attack_type: str) -> None:
+        if self.prev_attack_type is not None:
+            if self.prev_attack_type == 'v':
+                self.vengence_attack = 1.0
+                self.defend_friend_attack = 0.0
+                self.pillage_attack = 0.0
+
+            elif self.prev_attack_type == 'df':
+                self.vengence_attack = 0.0
+                self.defend_friend_attack = 1.0
+                self.pillage_attack = 0.0
+
+            elif self.prev_attack_type == 'p':
+                self.vengence_attack = 0.0
+                self.defend_friend_attack = 0.0
+                self.pillage_attack = 1.0
+
+            else:
+                self.vengence_attack = 0.0
+                self.defend_friend_attack = 0.0
+                self.pillage_attack = 0.0
+
+        self.prev_attack_type = attack_type
 
     # ------------------------------------------------------------------------------------------------------------------
     # Give tokens checkers ---------------------------------------------------------------------------------------------
@@ -434,9 +496,14 @@ class AssumptionChecker:
             self.percent_tokens_kept,
             self.percent_attackers,
             self.percent_pop_of_attackers,
+            self.percent_impact_of_attackers,
             self.tokens_kept_below_stolen,
             self.tokens_kept_above_stolen,
-
+            self.my_attack_damaged_other_player,
+            self.my_attack_benefited_me,
+            self.vengence_attack,
+            self.defend_friend_attack,
+            self.pillage_attack,
             self.percent_of_players_to_give_to,
             self.percent_of_friends_who_reciprocate
         )
