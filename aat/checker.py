@@ -3,13 +3,13 @@ from collections import deque
 import numpy as np
 import pandas as pd
 from scipy.stats import percentileofscore
-from typing import List, Set
+from typing import Dict, List, Set
 
 
 class AssumptionChecker:
     def __init__(self) -> None:
         # Helper variables used to estimate assumptions
-        self.player_idx, self.n_players, self.n_tokens = None, None, None
+        self.player_idx, self.n_players, self.n_tokens, self.game_params = None, None, None, None
         self.round_previously_used = None
         self.prev_modularities = deque(maxlen=5)
         self.prev_communities = None
@@ -45,6 +45,9 @@ class AssumptionChecker:
         self.communities_diffs_with_ihn_max = 0.5
         self.communities_diffs_with_ihp_min = 0.5
 
+        # todo
+        # How many differences are there from the detected communities of the agent that was just used?
+
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from determine desired community --------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
@@ -58,6 +61,9 @@ class AssumptionChecker:
         self.prominence_rank_val = 0.5
         self.familiarity_better_than_modularity = 0.5
         self.prosocial_score = 0.5
+
+        # todo
+        # How many differences are there from the desired community of the agent that was just used?
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from keep tokens ------------------------------------------------------------------------
@@ -77,10 +83,11 @@ class AssumptionChecker:
         self.none_in_existing_community = 0.5
 
     # Function for initializing static variables used in the checker calculations
-    def init_vars(self, player_idx: int, n_players: int, n_tokens: int) -> None:
+    def init_vars(self, player_idx: int, n_players: int, n_tokens: int, game_params: Dict[str, float]) -> None:
         self.player_idx = player_idx
         self.n_players = n_players
         self.n_tokens = n_tokens
+        self.game_params = game_params
 
     # ------------------------------------------------------------------------------------------------------------------
     # Progress checkers ------------------------------------------------------------------------------------------------
@@ -391,44 +398,6 @@ class AssumptionChecker:
 #         # --------------------------------------------------------------------------------------------------------------
 #         self.percent_of_players_to_give_to = 0.5
 #         self.percent_of_friends_who_reciprocate = 0.5
-#
-#     # ------------------------------------------------------------------------------------------------------------------
-#     # Keep tokens checkers ---------------------------------------------------------------------------------------------
-#     # ------------------------------------------------------------------------------------------------------------------
-#     def keep_tokens(self, tokens_kept: int, received: np.array, popularities: np.array, v: np.array) -> None:
-#         if self.n_tokens is None:
-#             self.n_tokens = self.n_players * 2
-#
-#         received_adjusted = received * self.n_tokens
-#
-#         if self.prev_tokens_kept is not None:
-#             tokens_stolen, n_attackers, impact_of_attackers = 0, 0, 0
-#             pop_sum, cumulative_pop_of_attackers = sum(popularities), 0
-#
-#             for i, tokens_received in enumerate(list(received_adjusted)):
-#                 if tokens_received < 0 and i != self.player_idx:
-#                     tokens_stolen += abs(tokens_received)
-#                     n_attackers += 1
-#                     impact_of_attackers += abs(v[i][self.player_idx])
-#                     cumulative_pop_of_attackers += popularities[i]
-#
-#             self.percent_tokens_kept = self.prev_tokens_kept / self.n_tokens
-#             self.percent_attackers = n_attackers / self.n_players
-#             self.percent_pop_of_attackers = cumulative_pop_of_attackers / pop_sum
-#             self.percent_impact_of_attackers = min(impact_of_attackers / self.prev_popularity_k, 1.0) \
-#                 if self.prev_popularity_k > 0 else 0.0
-#
-#             if self.prev_tokens_kept < tokens_stolen:
-#                 self.tokens_kept_below_stolen = self.prev_tokens_kept / tokens_stolen if tokens_stolen > 0 else 0.0
-#                 self.tokens_kept_above_stolen = 0.0
-#
-#             else:
-#                 self.tokens_kept_below_stolen = 0.0
-#                 self.tokens_kept_above_stolen = tokens_stolen / self.prev_tokens_kept if self.prev_tokens_kept > 0 \
-#                     else 0.0
-#
-#         self.prev_tokens_kept = tokens_kept
-#         self.prev_popularity_k = popularities[self.player_idx]
 #
 #     # ------------------------------------------------------------------------------------------------------------------
 #     # Attack other players checkers ------------------------------------------------------------------------------------

@@ -328,7 +328,7 @@ class GeneAgent3(AbstractAgent):
 
         # Initialize static vars for checker
         if self.checker is not None and round_num == 0:
-            self.checker.init_vars(player_idx, num_players, num_tokens)
+            self.checker.init_vars(player_idx, num_players, num_tokens, self.gameParams)
 
         # Progress checkers
         if self.checker is not None:
@@ -1239,7 +1239,7 @@ class GeneAgent3(AbstractAgent):
         # Change on May 5
         if (popularities[player_idx] <= 0) or (self.infl_pos_sumcol[player_idx] <= 0) or (
                 self.genes["defendFriendPriority"] < 50):
-            return (-1, 0)
+            return (-1, 0, 0, 0)
 
         # self.printT(player_idx, "meImporta: " + str(self.me_importa))
 
@@ -1299,6 +1299,7 @@ class GeneAgent3(AbstractAgent):
                         popularities[worst_ind] * self.keeping_strength[worst_ind])
                 steal_ROI = (gain * self.gameParams["steal"]) / (tokens_needed * popularities[player_idx])
                 imm_gain_per_token = (steal_ROI - self.ROI) * popularities[player_idx] * self.gameParams["alpha"]
+                damage = (gain / num_tokens) * self.gameParams["steal"] * self.gameParams["alpha"]
                 # self.printT(player_idx, "    steal_ROI: " + str(steal_ROI))
                 # self.printT(player_idx, "    gain: " + str(gain))
 
@@ -1313,15 +1314,15 @@ class GeneAgent3(AbstractAgent):
                 if vengence_advantage > 0.0:
                     self.expected_defend_friend_damage = gain * self.gameParams["alpha"] * self.gameParams[
                         "steal"] / num_tokens
-                    return (worst_ind, cantidad)
+                    return (worst_ind, cantidad, imm_gain_per_token, damage)
 
-        return (-1, 0)
+        return (-1, 0, 0, 0)
 
     def take_vengence(self, round_num, player_idx, num_players, selected_community, num_tokens, tokens_remaining,
                       popularities, influence):
         # Change on May 5
         if (popularities[player_idx] <= 0.0) or (self.genes["vengencePriority"] < 50):
-            return (-1, 0)
+            return (-1, 0, 0, 0)
 
         multiplicador = self.genes["vengenceMultiplier"] / 33.0
 
@@ -1408,7 +1409,7 @@ class GeneAgent3(AbstractAgent):
 
                 if vengence_advantage > 0.0:
                     # self.printT(player_idx, "adding: " + str(i) + ", " + str(cantidad) + ", " + str(vengence_advantage))
-                    vengence_possibilities.append((i, vengence_advantage, cantidad))
+                    vengence_possibilities.append((i, vengence_advantage, cantidad, imm_gain_per_token, damage))
 
         # random selection
         if len(vengence_possibilities) > 0:
@@ -1429,22 +1430,23 @@ class GeneAgent3(AbstractAgent):
 
                 if (num <= sumr):
                     # self.printT(player_idx, "plan to attack player " + str(attackPossibility[i][0]) + " with " + str(numAttackTokens))
-                    return (vengence_possibilities[i][0], vengence_possibilities[i][2])
+                    return (vengence_possibilities[i][0], vengence_possibilities[i][2], vengence_possibilities[i][3],
+                            vengence_possibilities[i][4])
 
-        return (-1, 0)
+        return (-1, 0, 0, 0)
 
     # Change on May 5-6
     def pillage_the_village(self, round_num, player_idx, num_players, selected_community, num_tokens, tokens_remaining,
                             popularities, influence, group_cat):
         if (popularities[player_idx] <= 0.0) or (round_num < (self.genes["pillageDelay"] / 10.0)) or (
                 self.genes["pillagePriority"] < 50):
-            return (-1, 0)
+            return (-1, 0, 0, 0)
 
         # self.printT(player_idx, "pillage tokens remaining: " + str(tokens_remaining))
 
         num_attack_tokens = min(tokens_remaining, int(num_tokens * (self.genes["pillageFury"] / 100.0) + 0.5))
         if num_attack_tokens <= 0:
-            return (-1, 0)
+            return (-1, 0, 0, 0)
 
         self.printT(player_idx, "\n Pillage info (" + str(num_attack_tokens) + "):")
 
@@ -1528,7 +1530,7 @@ class GeneAgent3(AbstractAgent):
                 # Change on May 11
                 margin = self.genes["pillageMargin"] / 100.0
                 if imm_gain_per_token > margin:
-                    pillage_possibilities.append((i, imm_gain_per_token, cantidad))
+                    pillage_possibilities.append((i, imm_gain_per_token, cantidad, imm_gain_per_token, damage))
 
         self.printT(player_idx, "")
 
@@ -1553,9 +1555,10 @@ class GeneAgent3(AbstractAgent):
 
                 if (num <= sumr):
                     # self.printT(player_idx, "plan to attack player " + str(attackPossibility[i][0]) + " with " + str(numAttackTokens))
-                    return (pillage_possibilities[i][0], pillage_possibilities[i][2])
+                    return (pillage_possibilities[i][0], pillage_possibilities[i][2], pillage_possibilities[i][3],
+                            pillage_possibilities[i][4])
 
-        return (-1, 0)
+        return (-1, 0, 0, 0)
 
     def find_community_vec(self, num_players, communities, plyr):
         my_comm_vec = np.zeros(num_players, dtype=int)
