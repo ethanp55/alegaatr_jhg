@@ -11,4 +11,4 @@ for i in range(len(generator_df)):
 generators.append(GeneAgent3(gene_str, 1, check_assumptions=True))
 players = generators[len(generators) - 10:]
 assert len(players) == 10
-run_with_specified_agents(players, numRounds=100)
+run_with_specified_agents(players, numRounds=10)

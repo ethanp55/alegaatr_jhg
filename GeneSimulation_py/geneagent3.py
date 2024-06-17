@@ -4,6 +4,7 @@ import numpy as np
 import heapq
 import sys
 import math
+import os
 import copy
 from aat.assumptions import Assumptions
 from aat.checker import AssumptionChecker
@@ -58,6 +59,7 @@ class GeneAgent3(AbstractAgent):
         super().__init__()
         self.num_gene_copies = _num_gene_copies  # Change on Sep 21
         self.checker = AssumptionChecker() if check_assumptions else None
+        self.I_was_used = False
         self.run_modularity_checker = False
         self.whoami = "gene"
         self.count = 0
@@ -283,12 +285,12 @@ class GeneAgent3(AbstractAgent):
 
         return theStr
 
-    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v):
-        self.run_modularity_checker = True
+    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, I_was_used=False):
+        self.run_modularity_checker, self.I_was_used = True, I_was_used
 
-        # Progress checkers
-        if self.checker is not None:
-            self.checker.progress_checkers(player_idx, round_num, popularities)
+        if round_num % 4 == 0:
+            self.I_was_used = True
+        # self.I_was_used = True
 
         self.printT(player_idx, str(received))
 
@@ -324,6 +326,16 @@ class GeneAgent3(AbstractAgent):
             # if round_num > 0:
             #     self.compute_homophily(num_players)
 
+        # Initialize static vars for checker
+        if self.checker is not None and round_num == 0:
+            self.checker.init_vars(player_idx, num_players, num_tokens)
+
+        # Progress checkers
+        if self.checker is not None:
+            self.checker.popularity_increased(round_num, self.I_was_used, self.pop_history)
+            self.checker.current_values(round_num, popularities)
+            self.checker.society_size()
+
         # group analysis and choice
         ihn_max_communities, ihp_min_communities = None, None
 
@@ -336,21 +348,21 @@ class GeneAgent3(AbstractAgent):
         communities, selected_community = self.group_analysis(round_num, num_players, player_idx, popularities,
                                                               influence)
 
-        # Determine desired community checkers
-        if self.checker is not None:
-            self.checker.changes_in_collective_strength(selected_community)
-            self.checker.how_close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
-            self.checker.how_many_members_missing(selected_community, communities)
-            self.checker.prominence(selected_community, popularities)
-            self.checker.modularity_vs_familiarity(selected_community)
-            self.checker.prosocial(selected_community)
-
-        # Detect community checkers
-        if self.checker is not None:
-            assert ihn_max_communities is not None and ihp_min_communities is not None
-            self.checker.graph_connectedness(influence)
-            self.checker.graph_edge_percentages(influence)
-            self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities)
+        # # Determine desired community checkers
+        # if self.checker is not None:
+        #     self.checker.changes_in_collective_strength(selected_community)
+        #     self.checker.how_close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
+        #     self.checker.how_many_members_missing(selected_community, communities)
+        #     self.checker.prominence(selected_community, popularities)
+        #     self.checker.modularity_vs_familiarity(selected_community)
+        #     self.checker.prosocial(selected_community)
+        #
+        # # Detect community checkers
+        # if self.checker is not None:
+        #     assert ihn_max_communities is not None and ihp_min_communities is not None
+        #     self.checker.graph_connectedness(influence)
+        #     self.checker.graph_edge_percentages(influence)
+        #     self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities)
 
         # figure out how many tokens to keep
         self.estimate_keeping(player_idx, num_players, num_tokens, communities)
@@ -396,10 +408,10 @@ class GeneAgent3(AbstractAgent):
                                                            num_tokens - num_attack_toks - guardo_toks, player_idx,
                                                            influence, popularities, selected_community, attack_alloc)
 
-        # Give tokens checkers
-        if self.checker is not None:
-            self.checker.percentage_of_players_to_give_to(groups_alloc)
-            self.checker.friends_are_reciprocating(influence, groups_alloc)
+        # # Give tokens checkers
+        # if self.checker is not None:
+        #     self.checker.percentage_of_players_to_give_to(groups_alloc)
+        #     self.checker.friends_are_reciprocating(influence, groups_alloc)
 
         # update some variables
         transaction_vec = groups_alloc - attack_alloc
@@ -408,13 +420,13 @@ class GeneAgent3(AbstractAgent):
         guardo_toks = num_tokens - sum(np.absolute(transaction_vec))
         transaction_vec[player_idx] += guardo_toks
 
-        # Attack checkers
-        if self.checker is not None:
-            self.checker.attack_was_successful(attack_alloc, v, guardo_toks, popularities)
-
-        # Keep tokens checkers
-        if self.checker is not None:
-            self.checker.keep_tokens(guardo_toks, received, popularities, v)
+        # # Attack checkers
+        # if self.checker is not None:
+        #     self.checker.attack_was_successful(attack_alloc, v, guardo_toks, popularities)
+        #
+        # # Keep tokens checkers
+        # if self.checker is not None:
+        #     self.checker.keep_tokens(guardo_toks, received, popularities, v)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec
@@ -427,6 +439,8 @@ class GeneAgent3(AbstractAgent):
 
         if transaction_vec[player_idx] < 0:
             print(str(player_idx) + " is stealing from self!!!")
+
+        self.I_was_used = False
 
         return transaction_vec
 
@@ -1165,14 +1179,14 @@ class GeneAgent3(AbstractAgent):
                 self.expected_defend_friend_damage = -99999
             attack_toks[attack_possibilities[0][1]] = attack_possibilities[0][2]
 
-            if self.checker is not None:
-                attack_type = attack_possibilities[0][-1]
-                self.checker.attack_type(attack_type)
+            # if self.checker is not None:
+            #     attack_type = attack_possibilities[0][-1]
+            #     self.checker.attack_type(attack_type)
         else:
             self.expected_defend_friend_damage = -99999
 
-            if self.checker is not None:
-                self.checker.attack_type('none')
+            # if self.checker is not None:
+            #     self.checker.attack_type('none')
 
         # # self.printT(player_idx, "        expected_defend_friend_damage: " + str(self.expected_defend_friend_damage))
 
@@ -2033,9 +2047,9 @@ class GeneAgent3(AbstractAgent):
         modu = self.alpha * self.compute_modularity(num_players, cur_comms, A_pos)
         modu -= (1.0 - self.alpha) * self.compute_modularity(num_players, cur_comms, A_neg)
 
-        if self.checker is not None and self.run_modularity_checker:
-            self.checker.changes_in_modularity(modu)
-            self.run_modularity_checker = False
+        # if self.checker is not None and self.run_modularity_checker:
+        #     self.checker.changes_in_modularity(modu)
+        #     self.run_modularity_checker = False
 
         return modu
 
