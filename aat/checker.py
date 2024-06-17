@@ -13,6 +13,7 @@ class AssumptionChecker:
         self.round_previously_used = None
         self.prev_modularities = deque(maxlen=5)
         self.prev_communities = None
+        self.prev_collective_strength = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers ------------------------------------------------------------------
@@ -42,6 +43,20 @@ class AssumptionChecker:
         self.communities_changes_from_prev = 0.5
         self.communities_diffs_with_ihn_max = 0.5
         self.communities_diffs_with_ihp_min = 0.5
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Assumption estimates from determine desired community --------------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
+        # 9 total
+        self.collective_strength_increased = 0.5
+        self.community_has_significant_strength = 0.5
+        self.near_target_strength = 0.5
+        self.percent_of_players_needed_for_desired_community = 0.5
+        self.prominence_avg_val = 0.5
+        self.prominence_max_val = 0.5
+        self.prominence_rank_val = 0.5
+        self.familiarity_better_than_modularity = 0.5
+        self.prosocial_score = 0.5
 
     # Function for initializing static variables used in the checker calculations
     def init_vars(self, player_idx: int, n_players: int, n_tokens: int) -> None:
@@ -173,7 +188,7 @@ class AssumptionChecker:
                     n_changes_from_prev += n_differences
                     player_to_community[player] = community
 
-            self.communities_changes_from_prev = n_changes_from_prev / total_possible_changes
+            self.communities_changes_from_prev = 1 - (n_changes_from_prev / total_possible_changes)
             assert 0 <= self.communities_changes_from_prev <= 1
 
             # Determine how many differences there are between the "regular" communities and the communities when
@@ -184,7 +199,7 @@ class AssumptionChecker:
                     n_differences = len(regular_community.symmetric_difference(community))
                     n_differences_with_ihn_max += n_differences
 
-            self.communities_diffs_with_ihn_max = n_differences_with_ihn_max / total_possible_changes
+            self.communities_diffs_with_ihn_max = 1 - (n_differences_with_ihn_max / total_possible_changes)
             assert 0 <= self.communities_diffs_with_ihn_max <= 1
 
             # Determine how many differences there are between the "regular" communities and the communities when
@@ -195,13 +210,77 @@ class AssumptionChecker:
                     n_differences = len(regular_community.symmetric_difference(community))
                     n_differences_with_ihp_min += n_differences
 
-            self.communities_diffs_with_ihp_min = n_differences_with_ihp_min / total_possible_changes
+            self.communities_diffs_with_ihp_min = 1 - (n_differences_with_ihp_min / total_possible_changes)
             assert 0 <= self.communities_diffs_with_ihp_min <= 1
 
         self.prev_communities = {}
         for community in communities:
             for player in community:
                 self.prev_communities[player] = community
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Determine desired community checkers -----------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    def collective_strength(self, desired_community, popularities: np.array) -> None:
+        strength = desired_community.collective_strength
+
+        # Check if the collective strength increased from the previous round
+        if self.prev_collective_strength is not None:
+            self.collective_strength_increased = float(strength > self.prev_collective_strength)
+
+        # Compare the strength of the desired community with the total popularity of society (i.e., how much of a
+        # presence the community has)
+        self.community_has_significant_strength = strength
+
+        self.prev_collective_strength = strength
+
+    def close_to_target_strength(self, desired_community, target) -> None:
+        collective_strength = desired_community.collective_strength
+        self.near_target_strength = min(collective_strength / target, 1.0)
+
+    def how_many_members_missing(self, desired_community, communities: List[Set[int]]) -> None:
+        desired_group = desired_community.s
+        player_group = None
+
+        for community in communities:
+            if self.player_idx in community:
+                player_group = community
+                break
+
+        assert player_group is not None
+        n_differences = len(player_group.symmetric_difference(desired_group))
+        assert self.n_players >= n_differences
+
+        self.percent_of_players_needed_for_desired_community = n_differences / self.n_players
+
+    def prominence(self, desired_community, popularities) -> None:
+        s = desired_community.s
+        group_sum, mx, num_greater = 0, 0.0, 0
+        for i in s:
+            group_sum += popularities[i]
+            if popularities[i] > mx:
+                mx = popularities[i]
+            if popularities[i] > popularities[self.player_idx]:
+                num_greater += 1
+
+        if (group_sum > 0.0) and (len(s) > 1):
+            ave_sum = group_sum / len(s)
+            avg_val = popularities[self.player_idx] / ave_sum
+            max_val = popularities[self.player_idx] / mx
+            rank_val = 1 - (num_greater / (len(s) - 1.0))
+
+        else:
+            avg_val, max_val, rank_val = 1.0, 1.0, 1.0
+
+        self.prominence_max_val, self.prominence_rank_val, self.prominence_avg_val = \
+            max_val, rank_val, min(avg_val, 1.0)
+
+    def modularity_vs_familiarity(self, desired_community) -> None:
+        modularity, familiarity = desired_community.modularity, desired_community.familiarity
+        self.familiarity_better_than_modularity = float(familiarity > modularity)
+
+    def prosocial(self, desired_community) -> None:
+        self.prosocial_score = desired_community.prosocial
 
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
@@ -228,22 +307,6 @@ class AssumptionChecker:
 #         self.prev_attack_type = None
 #         self.prev_tokens_kept_a = None
 #         self.prev_popularities_a = None
-#
-#         # --------------------------------------------------------------------------------------------------------------
-#         # Assumption estimates from determine desired community --------------------------------------------------------
-#         # --------------------------------------------------------------------------------------------------------------
-#         self.below_prev_collective_strength = 0.5
-#         self.above_prev_collective_strength = 0.5
-#         self.below_target_strength = 0.5
-#         self.above_target_strength = 0.5
-#         self.percent_of_players_needed_for_desired_community = 0.5
-#         self.prominence_below_avg = 0.5
-#         self.prominence_above_avg = 0.5
-#         self.prominence_max_val = 0.5
-#         self.prominence_rank_val = 0.5
-#         self.familiarity_below_modularity = 0.5
-#         self.familiarity_above_modularity = 0.5
-#         self.prosocial_score = 0.5
 #
 #         # --------------------------------------------------------------------------------------------------------------
 #         # Assumption estimates from keep tokens ------------------------------------------------------------------------

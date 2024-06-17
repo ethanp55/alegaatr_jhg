@@ -354,15 +354,14 @@ class GeneAgent3(AbstractAgent):
             self.checker.graph_connectedness(influence)
             self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities)
 
-        # # Determine desired community checkers
-        # if self.checker is not None:
-        #     self.checker.changes_in_collective_strength(selected_community)
-        #     self.checker.how_close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
-        #     self.checker.how_many_members_missing(selected_community, communities)
-        #     self.checker.prominence(selected_community, popularities)
-        #     self.checker.modularity_vs_familiarity(selected_community)
-        #     self.checker.prosocial(selected_community)
-        #
+        # Determine desired community checkers
+        if self.checker is not None:
+            self.checker.collective_strength(selected_community, popularities)
+            self.checker.close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
+            self.checker.how_many_members_missing(selected_community, communities)
+            self.checker.prominence(selected_community, popularities)
+            self.checker.modularity_vs_familiarity(selected_community)
+            self.checker.prosocial(selected_community)
 
         # figure out how many tokens to keep
         self.estimate_keeping(player_idx, num_players, num_tokens, communities)
