@@ -30,7 +30,7 @@ class AssumptionChecker:
         self.prev_popularities_a = None
 
         # --------------------------------------------------------------------------------------------------------------
-        # Assumption estimates from progress checkers  -----------------------------------------------------------------
+        # Assumption estimates from progress checkers ------------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
         self.improved_from_prev_round = 0.5
         self.improved_medium_term = 0.5
@@ -88,11 +88,11 @@ class AssumptionChecker:
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from attacking other players ------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
-        self.my_attack_damaged_other_player = 0.0
-        self.my_attack_benefited_me = 0.0
-        self.vengence_attack = 0.0
-        self.defend_friend_attack = 0.0
-        self.pillage_attack = 0.0
+        self.my_attack_damaged_other_player = 0.5
+        self.my_attack_benefited_me = 0.5
+        self.vengence_attack = 0.5
+        self.defend_friend_attack = 0.5
+        self.pillage_attack = 0.5
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from give tokens ------------------------------------------------------------------------
@@ -100,6 +100,7 @@ class AssumptionChecker:
         self.percent_of_players_to_give_to = 0.5
         self.percent_of_friends_who_reciprocate = 0.5
 
+    # Todo: have these be based on only the times the generator was used
     # ------------------------------------------------------------------------------------------------------------------
     # Progress checkers ------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
@@ -232,7 +233,7 @@ class AssumptionChecker:
                     n_changes_from_prev += n_differences
                     player_to_community[player] = community
 
-            self.communities_changes_from_prev = 1 - (n_changes_from_prev / total_possible_changes)
+            self.communities_changes_from_prev = n_changes_from_prev / total_possible_changes
             assert 0 <= self.communities_changes_from_prev <= 1
 
             # Determine how many differences there are between the "regular" communities and the communities when
@@ -243,7 +244,7 @@ class AssumptionChecker:
                     n_differences = len(regular_community.symmetric_difference(community))
                     n_differences_with_ihn_max += n_differences
 
-            self.communities_diffs_with_ihn_max = 1 - (n_differences_with_ihn_max / total_possible_changes)
+            self.communities_diffs_with_ihn_max = n_differences_with_ihn_max / total_possible_changes
             assert 0 <= self.communities_diffs_with_ihn_max <= 1
 
             # Determine how many differences there are between the "regular" communities and the communities when
@@ -254,7 +255,7 @@ class AssumptionChecker:
                     n_differences = len(regular_community.symmetric_difference(community))
                     n_differences_with_ihp_min += n_differences
 
-            self.communities_diffs_with_ihp_min = 1 - (n_differences_with_ihp_min / total_possible_changes)
+            self.communities_diffs_with_ihp_min = n_differences_with_ihp_min / total_possible_changes
             assert 0 <= self.communities_diffs_with_ihp_min <= 1
 
         self.prev_communities = {}
@@ -466,6 +467,10 @@ class AssumptionChecker:
             n_friends_who_reciprocate += 1 if friends_influence_on_me >= my_influence_on_friend else 0
 
         self.percent_of_friends_who_reciprocate = n_friends_who_reciprocate / n_friends if n_friends > 0 else 0.0
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
 
     def assumptions(self) -> Assumptions:
         estimated_assumptions = Assumptions(
