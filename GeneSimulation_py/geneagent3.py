@@ -348,6 +348,12 @@ class GeneAgent3(AbstractAgent):
         communities, selected_community = self.group_analysis(round_num, num_players, player_idx, popularities,
                                                               influence)
 
+        # Detect community checkers
+        if self.checker is not None:
+            assert ihn_max_communities is not None and ihp_min_communities is not None
+            self.checker.graph_connectedness(influence)
+            self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities)
+
         # # Determine desired community checkers
         # if self.checker is not None:
         #     self.checker.changes_in_collective_strength(selected_community)
@@ -357,12 +363,6 @@ class GeneAgent3(AbstractAgent):
         #     self.checker.modularity_vs_familiarity(selected_community)
         #     self.checker.prosocial(selected_community)
         #
-        # # Detect community checkers
-        # if self.checker is not None:
-        #     assert ihn_max_communities is not None and ihp_min_communities is not None
-        #     self.checker.graph_connectedness(influence)
-        #     self.checker.graph_edge_percentages(influence)
-        #     self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities)
 
         # figure out how many tokens to keep
         self.estimate_keeping(player_idx, num_players, num_tokens, communities)
@@ -2047,9 +2047,9 @@ class GeneAgent3(AbstractAgent):
         modu = self.alpha * self.compute_modularity(num_players, cur_comms, A_pos)
         modu -= (1.0 - self.alpha) * self.compute_modularity(num_players, cur_comms, A_neg)
 
-        # if self.checker is not None and self.run_modularity_checker:
-        #     self.checker.changes_in_modularity(modu)
-        #     self.run_modularity_checker = False
+        if self.checker is not None and self.run_modularity_checker:
+            self.checker.changes_in_modularity(modu)
+            self.run_modularity_checker = False
 
         return modu
 
