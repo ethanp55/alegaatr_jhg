@@ -6,9 +6,9 @@ generators, generator_df = [], pd.read_csv(f'../ResultsSaved/generator_genes/gen
 
 for i in range(len(generator_df)):
     gene_str = generator_df.iloc[i, 0]
-    generators.append(GeneAgent3(gene_str, 1))
+    generators.append(GeneAgent3(gene_str, 1, check_assumptions=True))
 
 generators.append(GeneAgent3(gene_str, 1, check_assumptions=True))
 players = generators[len(generators) - 10:]
 assert len(players) == 10
-run_with_specified_agents(players, numRounds=10)
+run_with_specified_agents(players, numRounds=100)

@@ -14,6 +14,7 @@ class AssumptionChecker:
         self.prev_modularities = deque(maxlen=5)
         self.prev_communities = None
         self.prev_collective_strength = None
+        self.prev_popularity = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers ------------------------------------------------------------------
@@ -57,6 +58,23 @@ class AssumptionChecker:
         self.prominence_rank_val = 0.5
         self.familiarity_better_than_modularity = 0.5
         self.prosocial_score = 0.5
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Assumption estimates from keep tokens ------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
+        # 8 total
+        self.does_not_keep_too_much = 0.5
+        self.n_attackers_is_low = 0.5
+        self.attackers_are_weak = 0.5
+        self.defense_was_effective = 0.5
+
+        # todo
+        self.defense_was_effective_last_time = 0.5
+        self.defense_would_have_been_effective = 0.5
+        #
+
+        self.none_in_desired_community = 0.5
+        self.none_in_existing_community = 0.5
 
     # Function for initializing static variables used in the checker calculations
     def init_vars(self, player_idx: int, n_players: int, n_tokens: int) -> None:
@@ -221,7 +239,7 @@ class AssumptionChecker:
     # ------------------------------------------------------------------------------------------------------------------
     # Determine desired community checkers -----------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
-    def collective_strength(self, desired_community, popularities: np.array) -> None:
+    def collective_strength(self, desired_community) -> None:
         strength = desired_community.collective_strength
 
         # Check if the collective strength increased from the previous round
@@ -283,6 +301,57 @@ class AssumptionChecker:
         self.prosocial_score = desired_community.prosocial
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Keep tokens checkers ---------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    def n_tokens_kept(self, tokens_kept) -> None:
+        self.does_not_keep_too_much = 1 - (tokens_kept / self.n_tokens)
+
+    def attackers(self, received: np.array, popularities: np.array, influence_matrix: np.array, desired_community,
+                  communities: List[Set[int]]) -> None:
+        received_adjusted = received * self.n_tokens
+        attacker_indices, impact_of_attackers = [], 0
+        pop_sum, cumulative_pop_of_attackers = sum(popularities), 0
+
+        for i, tokens_received in enumerate(list(received_adjusted)):
+            if tokens_received < 0 and i != self.player_idx:
+                attacker_indices.append(i)
+                if influence_matrix[i][self.player_idx] < 0:
+                    impact_of_attackers += abs(influence_matrix[i][self.player_idx])
+                cumulative_pop_of_attackers += popularities[i]
+
+        n_attackers = len(attacker_indices)
+
+        # Calculate how many attackers and how strong the attackers are
+        self.n_attackers_is_low = 1 - (n_attackers / self.n_players)
+        self.attackers_are_weak = 1 - (cumulative_pop_of_attackers / pop_sum)
+
+        # Estimate how effective the defense was
+        if self.prev_popularity is not None:
+            self.defense_was_effective = (1 - min(impact_of_attackers / self.prev_popularity, 1.0)) \
+                if self.prev_popularity > 0 else 0.5
+
+        self.prev_popularity = popularities[self.player_idx]
+
+        # Calculate how many attackers are in the CAB's desired community
+        desired_group = desired_community.s
+        player_group = None
+        n_in_desired, n_in_current = 0, 0
+
+        for community in communities:
+            if self.player_idx in community:
+                player_group = community
+                break
+
+        assert player_group is not None
+
+        for i in attacker_indices:
+            n_in_desired += 1 if i in desired_group else 0
+            n_in_current += 1 if i in player_group else 0
+
+        self.none_in_desired_community = 1 - (n_in_desired / len(desired_group))
+        self.none_in_existing_community = 1 - (n_in_current / len(player_group))
+
+    # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -309,16 +378,6 @@ class AssumptionChecker:
 #         self.prev_popularities_a = None
 #
 #         # --------------------------------------------------------------------------------------------------------------
-#         # Assumption estimates from keep tokens ------------------------------------------------------------------------
-#         # --------------------------------------------------------------------------------------------------------------
-#         self.percent_tokens_kept = 0.5
-#         self.percent_attackers = 0.5
-#         self.percent_pop_of_attackers = 0.5
-#         self.percent_impact_of_attackers = 0.5
-#         self.tokens_kept_below_stolen = 0.5
-#         self.tokens_kept_above_stolen = 0.5
-#
-#         # --------------------------------------------------------------------------------------------------------------
 #         # Assumption estimates from attacking other players ------------------------------------------------------------
 #         # --------------------------------------------------------------------------------------------------------------
 #         self.my_attack_damaged_other_player = 0.5
@@ -332,92 +391,6 @@ class AssumptionChecker:
 #         # --------------------------------------------------------------------------------------------------------------
 #         self.percent_of_players_to_give_to = 0.5
 #         self.percent_of_friends_who_reciprocate = 0.5
-#
-#     # ------------------------------------------------------------------------------------------------------------------
-#     # Determine desired community checkers -----------------------------------------------------------------------------
-#     # ------------------------------------------------------------------------------------------------------------------
-#     def changes_in_collective_strength(self, desired_community) -> None:
-#         collective_strength = desired_community.collective_strength
-#
-#         if self.prev_collective_strength is not None:
-#             if collective_strength < self.prev_collective_strength:
-#                 self.below_prev_collective_strength = collective_strength / self.prev_collective_strength
-#                 self.above_prev_collective_strength = 0.0
-#
-#             else:
-#                 self.below_prev_collective_strength = 0.0
-#                 self.above_prev_collective_strength = self.prev_collective_strength / collective_strength
-#
-#         self.prev_collective_strength = collective_strength
-#
-#     def how_close_to_target_strength(self, desired_community, target) -> None:
-#         collective_strength = desired_community.collective_strength
-#
-#         if collective_strength < target:
-#             self.below_target_strength = collective_strength / target
-#             self.above_target_strength = 0.0
-#
-#         else:
-#             self.below_target_strength = 0.0
-#             self.above_target_strength = target / collective_strength
-#
-#     def how_many_members_missing(self, desired_community, communities: List[Set[int]]) -> None:
-#         desired_group = desired_community.s
-#         player_group = None
-#
-#         for community in communities:
-#             if self.player_idx in community:
-#                 player_group = community
-#                 break
-#
-#         assert player_group is not None
-#         n_differences = len(player_group.symmetric_difference(desired_group))
-#         assert self.n_players >= n_differences
-#
-#         self.percent_of_players_needed_for_desired_community = n_differences / self.n_players
-#
-#     def prominence(self, desired_community, popularities) -> None:
-#         s = desired_community.s
-#         group_sum, mx, num_greater = 0, 0.0, 0
-#         for i in s:
-#             group_sum += popularities[i]
-#             if popularities[i] > mx:
-#                 mx = popularities[i]
-#             if popularities[i] > popularities[self.player_idx]:
-#                 num_greater += 1
-#
-#         if (group_sum > 0.0) and (len(s) > 1):
-#             ave_sum = group_sum / len(s)
-#             avg_val = popularities[self.player_idx] / ave_sum
-#             max_val = popularities[self.player_idx] / mx
-#             rank_val = 1 - (num_greater / (len(s) - 1.0))
-#
-#         else:
-#             avg_val, max_val, rank_val = 1.0, 1.0, 1.0
-#
-#         if avg_val < 1.0:
-#             self.prominence_below_avg = avg_val
-#             self.prominence_above_avg = 0.0
-#
-#         else:
-#             self.prominence_below_avg = 0.0
-#             self.prominence_above_avg = 1 / avg_val
-#
-#         self.prominence_max_val, self.prominence_rank_val = max_val, rank_val
-#
-#     def modularity_vs_familiarity(self, desired_community) -> None:
-#         modularity, familiarity = desired_community.modularity, desired_community.familiarity
-#
-#         if familiarity < modularity:
-#             self.familiarity_below_modularity = familiarity / modularity if modularity > 0 else 0.0
-#             self.familiarity_above_modularity = 0.0
-#
-#         else:
-#             self.familiarity_below_modularity = 0.0
-#             self.familiarity_above_modularity = modularity / familiarity if familiarity > 0 else 0.0
-#
-#     def prosocial(self, desired_community) -> None:
-#         self.prosocial_score = desired_community.prosocial
 #
 #     # ------------------------------------------------------------------------------------------------------------------
 #     # Keep tokens checkers ---------------------------------------------------------------------------------------------

@@ -356,7 +356,7 @@ class GeneAgent3(AbstractAgent):
 
         # Determine desired community checkers
         if self.checker is not None:
-            self.checker.collective_strength(selected_community, popularities)
+            self.checker.collective_strength(selected_community)
             self.checker.close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
             self.checker.how_many_members_missing(selected_community, communities)
             self.checker.prominence(selected_community, popularities)
@@ -423,9 +423,10 @@ class GeneAgent3(AbstractAgent):
         # if self.checker is not None:
         #     self.checker.attack_was_successful(attack_alloc, v, guardo_toks, popularities)
         #
-        # # Keep tokens checkers
-        # if self.checker is not None:
-        #     self.checker.keep_tokens(guardo_toks, received, popularities, v)
+        # Keep tokens checkers
+        if self.checker is not None:
+            self.checker.n_tokens_kept(guardo_toks)
+            self.checker.attackers(received, popularities, influence, selected_community, communities)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec
