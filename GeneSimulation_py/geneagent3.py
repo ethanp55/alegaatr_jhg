@@ -437,7 +437,8 @@ class GeneAgent3(AbstractAgent):
         # Keep tokens checkers
         if self.checker is not None:
             self.checker.n_tokens_kept(guardo_toks)
-            self.checker.attackers(received, popularities, influence, selected_community, communities)
+            self.checker.attackers(received, popularities, selected_community, communities)
+            self.checker.defense_strength(received, popularities, guardo_toks, I_was_used)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec

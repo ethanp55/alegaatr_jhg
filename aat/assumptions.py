@@ -108,8 +108,14 @@ class Assumptions:
     percent_of_players_to_give_to: float
     percent_of_friends_who_reciprocate: float
 
+    def __post_init__(self) -> None:
+        attribute_vals = self.__dict__.values()
+
+        for val in attribute_vals:
+            assert 0 <= val <= 1
+
     def alignment_vector(self) -> List[float]:
-        attribute_names = self.__dict__.keys()
-        tup = [round(self.__getattribute__(name), 5) for name in attribute_names]
+        attribute_vals = self.__dict__.values()
+        tup = [round(val, 5) for val in attribute_vals]
 
         return tup

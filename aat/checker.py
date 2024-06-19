@@ -18,6 +18,7 @@ class AssumptionChecker:
         self.desired_comm_from_last_use = None
         self.prev_collective_strength = None
         self.prev_popularity = None
+        self.prev_tokens_kept = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers ------------------------------------------------------------------
@@ -75,12 +76,8 @@ class AssumptionChecker:
         self.n_attackers_is_low = 0.5
         self.attackers_are_weak = 0.5
         self.defense_was_effective = 0.5
-
-        # todo
         self.defense_was_effective_last_time = 0.5
         self.defense_would_have_been_effective = 0.5
-        #
-
         self.none_in_desired_community = 0.5
         self.none_in_existing_community = 0.5
 
@@ -222,7 +219,6 @@ class AssumptionChecker:
                     player_to_community[player] = community
 
             self.communities_changes_from_prev = 1 - (n_changes_from_prev / total_possible_changes)
-            assert 0 <= self.communities_changes_from_prev <= 1
 
             # Determine how many differences there are between the "regular" communities and the communities when
             # using a max for the IHN matrix
@@ -233,7 +229,6 @@ class AssumptionChecker:
                     n_differences_with_ihn_max += n_differences
 
             self.communities_diffs_with_ihn_max = 1 - (n_differences_with_ihn_max / total_possible_changes)
-            assert 0 <= self.communities_diffs_with_ihn_max <= 1
 
             # Determine how many differences there are between the "regular" communities and the communities when
             # using a min for the IHP matrix
@@ -244,7 +239,6 @@ class AssumptionChecker:
                     n_differences_with_ihp_min += n_differences
 
             self.communities_diffs_with_ihp_min = 1 - (n_differences_with_ihp_min / total_possible_changes)
-            assert 0 <= self.communities_diffs_with_ihp_min <= 1
 
         self.prev_communities = {}
         for community in communities:
@@ -268,7 +262,6 @@ class AssumptionChecker:
                     n_changes_from_curr += n_differences
 
             self.communities_diffs_with_just_used = 1 - (n_changes_from_curr / total_possible_changes)
-            assert 0 <= self.communities_diffs_with_just_used <= 1
 
         if self.communities_from_last_use is not None:
             # Determine how many community changes, relative to the total number of players, there are compared to the
@@ -282,9 +275,6 @@ class AssumptionChecker:
                     n_changes_from_prev += n_differences
 
             self.communities_diffs_from_last_use = 1 - (n_changes_from_prev / total_possible_changes)
-            assert 0 <= self.communities_diffs_from_last_use <= 1
-
-            print(self.communities_diffs_from_last_use)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Determine desired community checkers -----------------------------------------------------------------------------
@@ -364,7 +354,6 @@ class AssumptionChecker:
             n_differences = len(s.symmetric_difference(s_just_used))
 
             self.desired_comm_diffs_with_just_used = 1 - (n_differences / total_possible_diffs)
-            assert 0 <= self.desired_comm_diffs_with_just_used <= 1
 
         # Calculate the number of differences between the desired community and the desired community from the last time
         # the agent was used
@@ -374,27 +363,23 @@ class AssumptionChecker:
             n_differences = len(s.symmetric_difference(s_from_last_use))
 
             self.desired_comm_diffs_from_last_use = 1 - (n_differences / total_possible_diffs)
-            assert 0 <= self.desired_comm_diffs_from_last_use <= 1
 
         self.prev_desired_comm = s
 
     # ------------------------------------------------------------------------------------------------------------------
     # Keep tokens checkers ---------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
-    def n_tokens_kept(self, tokens_kept) -> None:
+    def n_tokens_kept(self, tokens_kept: int) -> None:
         self.does_not_keep_too_much = 1 - (tokens_kept / self.n_tokens)
 
-    def attackers(self, received: np.array, popularities: np.array, influence_matrix: np.array, desired_community,
+    def attackers(self, received: np.array, popularities: np.array, desired_community,
                   communities: List[Set[int]]) -> None:
-        received_adjusted = received * self.n_tokens
-        attacker_indices, impact_of_attackers = [], 0
+        attacker_indices = []
         pop_sum, cumulative_pop_of_attackers = sum(popularities), 0
 
-        for i, tokens_received in enumerate(list(received_adjusted)):
+        for i, tokens_received in enumerate(list(received)):
             if tokens_received < 0 and i != self.player_idx:
                 attacker_indices.append(i)
-                if influence_matrix[i][self.player_idx] < 0:
-                    impact_of_attackers += abs(influence_matrix[i][self.player_idx])
                 cumulative_pop_of_attackers += popularities[i]
 
         n_attackers = len(attacker_indices)
@@ -402,13 +387,6 @@ class AssumptionChecker:
         # Calculate how many attackers and how strong the attackers are
         self.n_attackers_is_low = 1 - (n_attackers / self.n_players)
         self.attackers_are_weak = 1 - (cumulative_pop_of_attackers / pop_sum)
-
-        # Estimate how effective the defense was
-        if self.prev_popularity is not None:
-            self.defense_was_effective = (1 - min(impact_of_attackers / self.prev_popularity, 1.0)) \
-                if self.prev_popularity > 0 else 0.5
-
-        self.prev_popularity = popularities[self.player_idx]
 
         # Calculate how many attackers are in the CAB's desired community
         desired_group = desired_community.s
@@ -428,6 +406,51 @@ class AssumptionChecker:
 
         self.none_in_desired_community = 1 - (n_in_desired / len(desired_group))
         self.none_in_existing_community = 1 - (n_in_current / len(player_group))
+
+    def defense_strength(self, received: np.array, popularities: np.array, tokens_kept: int, was_used: bool) -> None:
+        impact_with_no_tokens, true_impact, what_if_impact, c_take = 0, 0, 0, self.game_params['steal']
+        pop = popularities[self.player_idx]
+
+        # Calculate how effective the defense was by comparing what would have happened if no tokens were kept
+        for i, tokens_received in enumerate(list(received)):
+            if tokens_received < 0 and i != self.player_idx:
+                steal_impact = c_take * -received[i]
+                impact_with_no_tokens += steal_impact
+
+        for i, tokens_received in enumerate(list(received)):
+            if tokens_received < 0 and i != self.player_idx:
+                numerator = pop * received[self.player_idx]
+                denominator = sum([popularities[j] * -received[j] for j in range(len(received)) if
+                                   received[j] < 0 and j != self.player_idx])
+                steal_impact = c_take * max(0, 1 - (numerator / denominator)) * -received[i]
+                true_impact += steal_impact
+
+        self.defense_was_effective = (1 - (true_impact / impact_with_no_tokens)) if impact_with_no_tokens != 0 else 0.5
+
+        # Calculate how effective the CAB's defense was the last time it was used
+        if was_used and impact_with_no_tokens != 0:
+            self.defense_was_effective_last_time = self.defense_was_effective
+
+        # Calculate how effective the CAB's defense would have been if it had been used
+        if self.prev_tokens_kept is not None:
+            proportion_kept = self.prev_tokens_kept / self.n_tokens
+
+            for i, tokens_received in enumerate(list(received)):
+                if tokens_received < 0 and i != self.player_idx:
+                    numerator = pop * proportion_kept
+                    denominator = sum([popularities[j] * -received[j] for j in range(len(received)) if
+                                       received[j] < 0 and j != self.player_idx])
+                    steal_impact = c_take * max(0, 1 - (numerator / denominator)) * -received[i]
+                    what_if_impact += steal_impact
+
+            self.defense_would_have_been_effective = (
+                    1 - (what_if_impact / impact_with_no_tokens)) if impact_with_no_tokens != 0 else 0.5
+
+            if impact_with_no_tokens != 0:
+                print(self.defense_was_effective, self.defense_was_effective_last_time,
+                      self.defense_would_have_been_effective)
+
+        self.prev_tokens_kept = tokens_kept
 
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
