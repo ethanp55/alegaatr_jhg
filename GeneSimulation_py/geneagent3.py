@@ -61,6 +61,7 @@ class GeneAgent3(AbstractAgent):
         self.checker = AssumptionChecker() if check_assumptions else None
         self.detected_comm, self.desired_comm = None, None
         self.detected_comm_just_used, self.desired_comm_just_used = None, None
+        self.attack_tokens, self.prev_attack_tokens_used = None, None
         self.run_modularity_checker = False
         self.whoami = "gene"
         self.count = 0
@@ -430,15 +431,17 @@ class GeneAgent3(AbstractAgent):
         guardo_toks = num_tokens - sum(np.absolute(transaction_vec))
         transaction_vec[player_idx] += guardo_toks
 
-        # # Attack checkers
-        # if self.checker is not None:
-        #     self.checker.attack_was_successful(attack_alloc, v, guardo_toks, popularities)
-        #
         # Keep tokens checkers
         if self.checker is not None:
             self.checker.n_tokens_kept(guardo_toks)
             self.checker.attackers(received, popularities, selected_community, communities)
             self.checker.defense_strength(received, popularities, guardo_toks, I_was_used)
+
+        # Attack checkers
+        if self.checker is not None:
+            self.attack_tokens = attack_alloc
+
+            self.checker.attack_results(self.prev_attack_tokens_used, v, popularities, I_was_used, round_num)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec

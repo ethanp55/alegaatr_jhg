@@ -19,6 +19,10 @@ class AssumptionChecker:
         self.prev_collective_strength = None
         self.prev_popularity = None
         self.prev_tokens_kept = None
+        self.prev_popularities_a = None
+        self.round_previously_used_a = None
+        self.pop_before_last_attack = None
+        self.prev_attack_tokens_used = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers ------------------------------------------------------------------
@@ -80,6 +84,20 @@ class AssumptionChecker:
         self.defense_would_have_been_effective = 0.5
         self.none_in_desired_community = 0.5
         self.none_in_existing_community = 0.5
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Assumption estimates from attacking other players ------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
+        self.my_attack_damaged_other_player = 0.5
+        self.my_attack_benefited_me = 0.5
+        self.pop_did_not_decrease_after_attack = 0.5
+        self.attack_would_have_damaged_other = 0.5
+        self.attack_would_have_benefited_us = 0.5
+        
+        self.does_not_attack_too_much = 0.5
+
+        self.attack_damaged_other_player = 0.5
+        self.attack_benefited_me = 0.5
 
     # Function for initializing static variables used in the checker calculations
     def init_vars(self, player_idx: int, n_players: int, n_tokens: int, game_params: Dict[str, float]) -> None:
@@ -453,6 +471,64 @@ class AssumptionChecker:
         self.prev_tokens_kept = tokens_kept
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Attack other players checkers ------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    def attack_results(self, attack_tokens_used: np.array, v: np.array, popularities: np.array, was_used: bool,
+                       round_num: int, received: np.array) -> None:
+        if self.prev_attack_tokens_used is not None:
+            tokens_kept = received[self.player_idx] * self.n_tokens
+            player_that_was_attacked, tokens_stolen = None, None
+            for i, tokens in enumerate(list(self.prev_attack_tokens_used)):
+                if tokens > 0:
+                    player_that_was_attacked, tokens_stolen = i, tokens
+                    break
+
+            # Calculate how effective the CAB's attack was the last time it was used
+            if was_used and tokens_stolen > 0:
+                self.round_previously_used_a = round_num
+                self.pop_before_last_attack = self.prev_popularities_a[self.player_idx]
+
+                my_impact_on_that_player = abs(v[self.player_idx][player_that_was_attacked])
+                my_popularity, their_popularity = \
+                    self.prev_popularities_a[self.player_idx], self.prev_popularities_a[player_that_was_attacked]
+                percent_stolen = tokens_stolen / (tokens_stolen + tokens_kept)
+                my_benefit = v[self.player_idx][self.player_idx] * percent_stolen
+
+                self.my_attack_damaged_other_player = min(my_impact_on_that_player / their_popularity, 1.0) \
+                    if their_popularity > 0 else 0.0
+                self.my_attack_benefited_me = min(my_benefit / my_popularity, 1.0) if my_popularity > 0 else 0.0
+
+            # Calculate whether our popularity decreased 2 rounds after the CAB was last used and attacked another
+            # player
+            if round_num == self.round_previously_used_a + 1:
+                my_popularity = popularities[self.player_idx]
+                self.pop_did_not_decrease_after_attack = min(1.0, my_popularity / self.pop_before_last_attack) \
+                    if self.pop_before_last_attack > 0 else 0.5
+
+            # Calculate how effective the previous agent's attack was
+            if tokens_stolen > 0:
+                my_impact_on_that_player = abs(v[self.player_idx][player_that_was_attacked])
+                my_popularity, their_popularity = \
+                    self.prev_popularities_a[self.player_idx], self.prev_popularities_a[player_that_was_attacked]
+                percent_stolen = tokens_stolen / (tokens_stolen + tokens_kept)
+                my_benefit = v[self.player_idx][self.player_idx] * percent_stolen
+
+                self.attack_damaged_other_player = min(my_impact_on_that_player / their_popularity, 1.0) \
+                    if their_popularity > 0 else 0.0
+                self.attack_benefited_me = min(my_benefit / my_popularity, 1.0) if my_popularity > 0 else 0.0
+
+        self.prev_popularities_a = popularities
+        self.prev_attack_tokens_used = attack_tokens_used
+
+    def attack_predictions(self) -> None:
+        pass
+
+    def n_attack_tokens(self, attack_tokens: np.array) -> None:
+        n_attack = sum([tokens for tokens in attack_tokens])
+
+        self.does_not_attack_too_much = 1 - (n_attack / self.n_tokens)
+
+    # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -479,76 +555,10 @@ class AssumptionChecker:
 #         self.prev_popularities_a = None
 #
 #         # --------------------------------------------------------------------------------------------------------------
-#         # Assumption estimates from attacking other players ------------------------------------------------------------
-#         # --------------------------------------------------------------------------------------------------------------
-#         self.my_attack_damaged_other_player = 0.5
-#         self.my_attack_benefited_me = 0.5
-#         self.vengence_attack = 0.5
-#         self.defend_friend_attack = 0.5
-#         self.pillage_attack = 0.5
-#
-#         # --------------------------------------------------------------------------------------------------------------
 #         # Assumption estimates from give tokens ------------------------------------------------------------------------
 #         # --------------------------------------------------------------------------------------------------------------
 #         self.percent_of_players_to_give_to = 0.5
 #         self.percent_of_friends_who_reciprocate = 0.5
-#
-#     # ------------------------------------------------------------------------------------------------------------------
-#     # Attack other players checkers ------------------------------------------------------------------------------------
-#     # ------------------------------------------------------------------------------------------------------------------
-#     def attack_was_successful(self, attack_tokens: np.array, v: np.array, tokens_kept: int,
-#                               popularities: np.array) -> None:
-#
-#         if self.prev_attack_tokens is not None:
-#             player_that_was_attacked, tokens_stolen = None, None
-#
-#             for i, tokens in enumerate(list(self.prev_attack_tokens)):
-#                 if tokens > 0:
-#                     player_that_was_attacked, tokens_stolen = i, tokens
-#                     break
-#
-#             if player_that_was_attacked is not None:
-#                 my_impact_on_that_player = abs(v[self.player_idx][player_that_was_attacked])
-#                 my_popularity, their_popularity = \
-#                     self.prev_popularities_a[self.player_idx], self.prev_popularities_a[player_that_was_attacked]
-#                 percent_stolen = tokens_stolen / (tokens_stolen + self.prev_tokens_kept_a)
-#                 my_benefit = v[self.player_idx][self.player_idx] * percent_stolen
-#
-#                 self.my_attack_damaged_other_player = min(my_impact_on_that_player / their_popularity, 1.0) \
-#                     if their_popularity > 0 else 0.0
-#                 self.my_attack_benefited_me = min(my_benefit / my_popularity, 1.0) if my_popularity > 0 else 0.0
-#
-#             else:
-#                 self.my_attack_damaged_other_player = 0.0
-#                 self.my_attack_benefited_me = 0.0
-#
-#         self.prev_attack_tokens = attack_tokens
-#         self.prev_tokens_kept_a = tokens_kept
-#         self.prev_popularities_a = popularities
-#
-#     def attack_type(self, attack_type: str) -> None:
-#         if self.prev_attack_type is not None:
-#             if self.prev_attack_type == 'v':
-#                 self.vengence_attack = 1.0
-#                 self.defend_friend_attack = 0.0
-#                 self.pillage_attack = 0.0
-#
-#             elif self.prev_attack_type == 'df':
-#                 self.vengence_attack = 0.0
-#                 self.defend_friend_attack = 1.0
-#                 self.pillage_attack = 0.0
-#
-#             elif self.prev_attack_type == 'p':
-#                 self.vengence_attack = 0.0
-#                 self.defend_friend_attack = 0.0
-#                 self.pillage_attack = 1.0
-#
-#             else:
-#                 self.vengence_attack = 0.0
-#                 self.defend_friend_attack = 0.0
-#                 self.pillage_attack = 0.0
-#
-#         self.prev_attack_type = attack_type
 #
 #     # ------------------------------------------------------------------------------------------------------------------
 #     # Give tokens checkers ---------------------------------------------------------------------------------------------
@@ -573,60 +583,3 @@ class AssumptionChecker:
 #             n_friends_who_reciprocate += 1 if friends_influence_on_me >= my_influence_on_friend else 0
 #
 #         self.percent_of_friends_who_reciprocate = n_friends_who_reciprocate / n_friends if n_friends > 0 else 0.0
-#
-#     # ------------------------------------------------------------------------------------------------------------------
-#     # ------------------------------------------------------------------------------------------------------------------
-#     # ------------------------------------------------------------------------------------------------------------------
-#
-#     def assumptions(self) -> Assumptions:
-#         estimated_assumptions = Assumptions(
-#             self.improved_from_prev_round,
-#             self.improved_medium_term,
-#             self.improved_long_term,
-#             self.rank,
-#             self.rank_improved_from_prev_round,
-#             self.rank_improved_medium_term,
-#             self.rank_improved_long_term,
-#             self.percentile,
-#             self.below_30_rounds,
-#             self.above_30_rounds,
-#             self.below_10_players,
-#             self.above_10_players,
-#             self.positive_density,
-#             self.negative_density,
-#             self.percentage_of_positive_edges,
-#             self.percentage_of_neutral_edges,
-#             self.percentage_of_negative_edges,
-#             self.modularity_above_ema,
-#             self.modularity_below_ema,
-#             self.communities_changes_from_prev,
-#             self.communities_diffs_with_ihn_max,
-#             self.communities_diffs_with_ihp_min,
-#             self.below_prev_collective_strength,
-#             self.above_prev_collective_strength,
-#             self.below_target_strength,
-#             self.above_target_strength,
-#             self.percent_of_players_needed_for_desired_community,
-#             self.prominence_below_avg,
-#             self.prominence_above_avg,
-#             self.prominence_max_val,
-#             self.prominence_rank_val,
-#             self.familiarity_below_modularity,
-#             self.familiarity_above_modularity,
-#             self.prosocial_score,
-#             self.percent_tokens_kept,
-#             self.percent_attackers,
-#             self.percent_pop_of_attackers,
-#             self.percent_impact_of_attackers,
-#             self.tokens_kept_below_stolen,
-#             self.tokens_kept_above_stolen,
-#             self.my_attack_damaged_other_player,
-#             self.my_attack_benefited_me,
-#             self.vengence_attack,
-#             self.defend_friend_attack,
-#             self.pillage_attack,
-#             self.percent_of_players_to_give_to,
-#             self.percent_of_friends_who_reciprocate
-#         )
-#
-#         return estimated_assumptions
