@@ -3,7 +3,7 @@ from collections import deque
 import numpy as np
 import pandas as pd
 from scipy.stats import percentileofscore
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 
 class AssumptionChecker:
@@ -13,13 +13,16 @@ class AssumptionChecker:
         self.round_previously_used = None
         self.prev_modularities = deque(maxlen=5)
         self.prev_communities = None
+        self.communities_from_last_use = None
+        self.prev_desired_comm = None
+        self.desired_comm_from_last_use = None
         self.prev_collective_strength = None
         self.prev_popularity = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers ------------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
-        # 12 total
+        # 13 total
         self.pop_improved_1_round_after = 0.5
         self.pop_improved_2_rounds_after = 0.5
         self.rel_pop_improved_1_round_after = 0.5
@@ -32,11 +35,12 @@ class AssumptionChecker:
         self.above_30_rounds = 0.5
         self.below_10_players = 0.5
         self.above_10_players = 0.5
+        self.was_just_used = 0.5
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from detect communities -----------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
-        # 7 total
+        # 9 total
         self.positive_density = 0.5
         self.negative_density = 0.5
         self.modularity_above_ema = 0.5
@@ -44,14 +48,13 @@ class AssumptionChecker:
         self.communities_changes_from_prev = 0.5
         self.communities_diffs_with_ihn_max = 0.5
         self.communities_diffs_with_ihp_min = 0.5
-
-        # todo
-        # How many differences are there from the detected communities of the agent that was just used?
+        self.communities_diffs_with_just_used = 0.5
+        self.communities_diffs_from_last_use = 0.5
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from determine desired community --------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
-        # 9 total
+        # 11 total
         self.collective_strength_increased = 0.5
         self.community_has_significant_strength = 0.5
         self.near_target_strength = 0.5
@@ -61,9 +64,8 @@ class AssumptionChecker:
         self.prominence_rank_val = 0.5
         self.familiarity_better_than_modularity = 0.5
         self.prosocial_score = 0.5
-
-        # todo
-        # How many differences are there from the desired community of the agent that was just used?
+        self.desired_comm_diffs_with_just_used = 0.5
+        self.desired_comm_diffs_from_last_use = 0.5
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from keep tokens ------------------------------------------------------------------------
@@ -95,6 +97,8 @@ class AssumptionChecker:
     def popularity_increased(self, round_num: int, was_just_used: bool, pop_history: List[np.array]) -> None:
         if was_just_used:
             self.round_previously_used = round_num
+
+        self.was_just_used = float(was_just_used)
 
         # Check for changes in popularity (absolute and relative) and percentile/rank 1 and 2 rounds after last using
         # the CAB agent, if possible; default to 0.5 (to represent uncertainty) if we cannot calculate
@@ -198,7 +202,11 @@ class AssumptionChecker:
         self.prev_modularities.append(modularity)
 
     def changes_in_communities(self, communities: List[Set[int]], ihn_max_communities: List[Set[int]],
-                               ihp_min_communities: List[Set[int]]) -> None:
+                               ihp_min_communities: List[Set[int]], was_just_used: bool,
+                               communities_just_used: Optional[List[Set[int]]]) -> None:
+        if was_just_used and self.prev_communities is not None:
+            self.communities_from_last_use = self.prev_communities
+
         if self.prev_communities is not None:
             n_changes_from_prev, n_differences_with_ihn_max, n_differences_with_ihp_min = 0, 0, 0
             total_possible_changes = (self.n_players - 1) * self.n_players
@@ -242,6 +250,41 @@ class AssumptionChecker:
         for community in communities:
             for player in community:
                 self.prev_communities[player] = community
+
+        if communities_just_used is not None:
+            # Determine how many community changes, relative to the total number of players, there are compared to the
+            # detected communities of the agent that was just used
+            n_changes_from_curr, total_possible_changes = 0, (self.n_players - 1) * self.n_players
+            player_to_community = {}
+
+            for community in communities:
+                for player in community:
+                    player_to_community[player] = community
+
+            for community in communities_just_used:
+                for player in community:
+                    regular_community = player_to_community[player]
+                    n_differences = len(regular_community.symmetric_difference(community))
+                    n_changes_from_curr += n_differences
+
+            self.communities_diffs_with_just_used = 1 - (n_changes_from_curr / total_possible_changes)
+            assert 0 <= self.communities_diffs_with_just_used <= 1
+
+        if self.communities_from_last_use is not None:
+            # Determine how many community changes, relative to the total number of players, there are compared to the
+            # last time the agent was used
+            n_changes_from_prev, total_possible_changes = 0, (self.n_players - 1) * self.n_players
+
+            for community in communities:
+                for player in community:
+                    player_prev_community = self.communities_from_last_use[player]
+                    n_differences = len(player_prev_community.symmetric_difference(community))
+                    n_changes_from_prev += n_differences
+
+            self.communities_diffs_from_last_use = 1 - (n_changes_from_prev / total_possible_changes)
+            assert 0 <= self.communities_diffs_from_last_use <= 1
+
+            print(self.communities_diffs_from_last_use)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Determine desired community checkers -----------------------------------------------------------------------------
@@ -306,6 +349,34 @@ class AssumptionChecker:
 
     def prosocial(self, desired_community) -> None:
         self.prosocial_score = desired_community.prosocial
+
+    def desired_community_differences(self, desired_community, was_just_used: bool,
+                                      desired_community_just_used: Optional) -> None:
+        s = set(desired_community.s)
+
+        if was_just_used and self.prev_desired_comm is not None:
+            self.desired_comm_from_last_use = self.prev_desired_comm
+
+        # Calculate the number of differences between the desired community and the desired community that was just used
+        if desired_community_just_used is not None:
+            total_possible_diffs = self.n_players - 1
+            s_just_used = desired_community_just_used.s
+            n_differences = len(s.symmetric_difference(s_just_used))
+
+            self.desired_comm_diffs_with_just_used = 1 - (n_differences / total_possible_diffs)
+            assert 0 <= self.desired_comm_diffs_with_just_used <= 1
+
+        # Calculate the number of differences between the desired community and the desired community from the last time
+        # the agent was used
+        if self.desired_comm_from_last_use is not None:
+            total_possible_diffs = self.n_players - 1
+            s_from_last_use = self.desired_comm_from_last_use
+            n_differences = len(s.symmetric_difference(s_from_last_use))
+
+            self.desired_comm_diffs_from_last_use = 1 - (n_differences / total_possible_diffs)
+            assert 0 <= self.desired_comm_diffs_from_last_use <= 1
+
+        self.prev_desired_comm = s
 
     # ------------------------------------------------------------------------------------------------------------------
     # Keep tokens checkers ---------------------------------------------------------------------------------------------

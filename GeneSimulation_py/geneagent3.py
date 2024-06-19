@@ -59,7 +59,8 @@ class GeneAgent3(AbstractAgent):
         super().__init__()
         self.num_gene_copies = _num_gene_copies  # Change on Sep 21
         self.checker = AssumptionChecker() if check_assumptions else None
-        self.I_was_used = False
+        self.detected_comm, self.desired_comm = None, None
+        self.detected_comm_just_used, self.desired_comm_just_used = None, None
         self.run_modularity_checker = False
         self.whoami = "gene"
         self.count = 0
@@ -286,11 +287,11 @@ class GeneAgent3(AbstractAgent):
         return theStr
 
     def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, I_was_used=False):
-        self.run_modularity_checker, self.I_was_used = True, I_was_used
+        self.run_modularity_checker = True
 
-        if round_num % 4 == 0:
-            self.I_was_used = True
-        # self.I_was_used = True
+        if round_num % 10 == 0:
+            I_was_used = True
+        # I_was_used = True
 
         self.printT(player_idx, str(received))
 
@@ -332,7 +333,7 @@ class GeneAgent3(AbstractAgent):
 
         # Progress checkers
         if self.checker is not None:
-            self.checker.popularity_increased(round_num, self.I_was_used, self.pop_history)
+            self.checker.popularity_increased(round_num, I_was_used, self.pop_history)
             self.checker.current_values(round_num, popularities)
             self.checker.society_size()
 
@@ -351,17 +352,27 @@ class GeneAgent3(AbstractAgent):
         # Detect community checkers
         if self.checker is not None:
             assert ihn_max_communities is not None and ihp_min_communities is not None
+            self.detected_comm = communities
+            if I_was_used:
+                self.detected_comm_just_used = communities
+
             self.checker.graph_connectedness(influence)
-            self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities)
+            self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities, I_was_used,
+                                                self.detected_comm_just_used)
 
         # Determine desired community checkers
         if self.checker is not None:
+            self.desired_comm = selected_community
+            if I_was_used:
+                self.desired_comm_just_used = selected_community
+
             self.checker.collective_strength(selected_community)
             self.checker.close_to_target_strength(selected_community, self.genes['coalitionTarget'] / 100)
             self.checker.how_many_members_missing(selected_community, communities)
             self.checker.prominence(selected_community, popularities)
             self.checker.modularity_vs_familiarity(selected_community)
             self.checker.prosocial(selected_community)
+            self.checker.desired_community_differences(selected_community, I_was_used, self.desired_comm_just_used)
 
         # figure out how many tokens to keep
         self.estimate_keeping(player_idx, num_players, num_tokens, communities)
@@ -439,8 +450,6 @@ class GeneAgent3(AbstractAgent):
 
         if transaction_vec[player_idx] < 0:
             print(str(player_idx) + " is stealing from self!!!")
-
-        self.I_was_used = False
 
         return transaction_vec
 
