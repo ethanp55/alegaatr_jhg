@@ -23,6 +23,8 @@ class AssumptionChecker:
         self.round_previously_used_a = None
         self.pop_before_last_attack = None
         self.prev_attack_tokens_used = None
+        self.prev_attack_gain_pred, self.attack_damage_pred, self.prev_player_to_attack = None, None, None
+        self.prev_popularities_a_pred = None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers ------------------------------------------------------------------
@@ -88,14 +90,15 @@ class AssumptionChecker:
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from attacking other players ------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
+        # 10 total
         self.my_attack_damaged_other_player = 0.5
         self.my_attack_benefited_me = 0.5
         self.pop_did_not_decrease_after_attack = 0.5
         self.attack_would_have_damaged_other = 0.5
         self.attack_would_have_benefited_us = 0.5
-        
         self.does_not_attack_too_much = 0.5
-
+        self.attacked_player_not_in_community = 0.5
+        self.attacked_player_not_in_desired_group = 0.5
         self.attack_damaged_other_player = 0.5
         self.attack_benefited_me = 0.5
 
@@ -315,7 +318,7 @@ class AssumptionChecker:
         self.near_target_strength = min(collective_strength / target, 1.0)
 
     def how_many_members_missing(self, desired_community, communities: List[Set[int]]) -> None:
-        desired_group = desired_community.s
+        desired_group = set(desired_community.s)
         player_group = None
 
         for community in communities:
@@ -323,14 +326,12 @@ class AssumptionChecker:
                 player_group = community
                 break
 
-        assert player_group is not None
         n_differences = len(player_group.symmetric_difference(desired_group))
-        assert self.n_players >= n_differences
 
         self.percent_of_players_needed_for_desired_community = n_differences / self.n_players
 
     def prominence(self, desired_community, popularities) -> None:
-        s = desired_community.s
+        s = set(desired_community.s)
         group_sum, mx, num_greater = 0, 0.0, 0
         for i in s:
             group_sum += popularities[i]
@@ -368,7 +369,7 @@ class AssumptionChecker:
         # Calculate the number of differences between the desired community and the desired community that was just used
         if desired_community_just_used is not None:
             total_possible_diffs = self.n_players - 1
-            s_just_used = desired_community_just_used.s
+            s_just_used = set(desired_community_just_used.s)
             n_differences = len(s.symmetric_difference(s_just_used))
 
             self.desired_comm_diffs_with_just_used = 1 - (n_differences / total_possible_diffs)
@@ -407,7 +408,7 @@ class AssumptionChecker:
         self.attackers_are_weak = 1 - (cumulative_pop_of_attackers / pop_sum)
 
         # Calculate how many attackers are in the CAB's desired community
-        desired_group = desired_community.s
+        desired_group = set(desired_community.s)
         player_group = None
         n_in_desired, n_in_current = 0, 0
 
@@ -415,8 +416,6 @@ class AssumptionChecker:
             if self.player_idx in community:
                 player_group = community
                 break
-
-        assert player_group is not None
 
         for i in attacker_indices:
             n_in_desired += 1 if i in desired_group else 0
@@ -464,20 +463,16 @@ class AssumptionChecker:
             self.defense_would_have_been_effective = (
                     1 - (what_if_impact / impact_with_no_tokens)) if impact_with_no_tokens != 0 else 0.5
 
-            if impact_with_no_tokens != 0:
-                print(self.defense_was_effective, self.defense_was_effective_last_time,
-                      self.defense_would_have_been_effective)
-
         self.prev_tokens_kept = tokens_kept
 
     # ------------------------------------------------------------------------------------------------------------------
     # Attack other players checkers ------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     def attack_results(self, attack_tokens_used: np.array, v: np.array, popularities: np.array, was_used: bool,
-                       round_num: int, received: np.array) -> None:
+                       round_num: int, received: np.array, desired_community, communities: List[Set[int]]) -> None:
         if self.prev_attack_tokens_used is not None:
             tokens_kept = received[self.player_idx] * self.n_tokens
-            player_that_was_attacked, tokens_stolen = None, None
+            player_that_was_attacked, tokens_stolen = None, 0
             for i, tokens in enumerate(list(self.prev_attack_tokens_used)):
                 if tokens > 0:
                     player_that_was_attacked, tokens_stolen = i, tokens
@@ -500,7 +495,7 @@ class AssumptionChecker:
 
             # Calculate whether our popularity decreased 2 rounds after the CAB was last used and attacked another
             # player
-            if round_num == self.round_previously_used_a + 1:
+            if self.round_previously_used_a is not None and round_num == self.round_previously_used_a + 1:
                 my_popularity = popularities[self.player_idx]
                 self.pop_did_not_decrease_after_attack = min(1.0, my_popularity / self.pop_before_last_attack) \
                     if self.pop_before_last_attack > 0 else 0.5
@@ -517,11 +512,40 @@ class AssumptionChecker:
                     if their_popularity > 0 else 0.0
                 self.attack_benefited_me = min(my_benefit / my_popularity, 1.0) if my_popularity > 0 else 0.0
 
+            # Calculate whether the attacked player, if one exists, was in the CAB's detected community
+            player_group = None
+
+            for community in communities:
+                if self.player_idx in community:
+                    player_group = community
+                    break
+
+            self.attacked_player_not_in_community = float(
+                player_that_was_attacked not in player_group) if player_that_was_attacked is not None else 1.0
+
+            # Calculate whether the attacked player, if one exists, was in the CAB's desired community
+            desired_group = set(desired_community.s)
+            self.attacked_player_not_in_desired_group = float(
+                player_that_was_attacked not in desired_group) if player_that_was_attacked is not None else 1.0
+
         self.prev_popularities_a = popularities
         self.prev_attack_tokens_used = attack_tokens_used
 
-    def attack_predictions(self) -> None:
-        pass
+    def attack_predictions(self, n_tokens: int, gain_per_token: float, damage: float, player_to_attack: int,
+                           popularities: np.array) -> None:
+        gain = n_tokens * gain_per_token
+
+        if self.prev_attack_gain_pred is not None:
+            my_pop = self.prev_popularities_a_pred[self.player_idx]
+            their_pop = self.prev_popularities_a_pred[self.prev_player_to_attack]
+
+            self.attack_would_have_benefited_us = max(0.0, min(1.0, self.prev_attack_gain_pred / my_pop)) \
+                if my_pop > 0 else 0.0
+            self.attack_would_have_damaged_other = max(0.0, min(1.0, damage / their_pop)) if their_pop > 0 else 0.0
+
+        self.prev_attack_gain_pred = gain
+        self.prev_player_to_attack = player_to_attack
+        self.prev_popularities_a_pred = popularities
 
     def n_attack_tokens(self, attack_tokens: np.array) -> None:
         n_attack = sum([tokens for tokens in attack_tokens])

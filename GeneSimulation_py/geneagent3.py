@@ -441,7 +441,11 @@ class GeneAgent3(AbstractAgent):
         if self.checker is not None:
             self.attack_tokens = attack_alloc
 
-            self.checker.attack_results(self.prev_attack_tokens_used, v, popularities, I_was_used, round_num)
+            # self.checker.attack_results(self.prev_attack_tokens_used, v, popularities, I_was_used, round_num, received,
+            #                             selected_community, communities)
+            self.checker.attack_results(attack_alloc, v, popularities, I_was_used, round_num, received,
+                                        selected_community, communities)
+            self.checker.n_attack_tokens(attack_alloc)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec
@@ -1176,12 +1180,15 @@ class GeneAgent3(AbstractAgent):
 
         attack_possibilities = []
         if (pillage_choice[0] >= 0):
-            attack_possibilities.append((self.genes["pillagePriority"], pillage_choice[0], pillage_choice[1], 'p'))
+            attack_possibilities.append((self.genes["pillagePriority"], pillage_choice[0], pillage_choice[1],
+                                         pillage_choice[2], pillage_choice[3]))
         if (vengence_choice[0] >= 0):
-            attack_possibilities.append((self.genes["vengencePriority"], vengence_choice[0], vengence_choice[1], 'v'))
+            attack_possibilities.append((self.genes["vengencePriority"], vengence_choice[0], vengence_choice[1],
+                                         vengence_choice[2], vengence_choice[3]))
         if (defend_friend_choice[0] >= 0):
             attack_possibilities.append(
-                (self.genes["defendFriendPriority"], defend_friend_choice[0], defend_friend_choice[1], 'df'))
+                (self.genes["defendFriendPriority"], defend_friend_choice[0], defend_friend_choice[1],
+                 defend_friend_choice[2], defend_friend_choice[3]))
 
         # # decide which attack to do
         if len(attack_possibilities) > 0:
@@ -1192,14 +1199,14 @@ class GeneAgent3(AbstractAgent):
                 self.expected_defend_friend_damage = -99999
             attack_toks[attack_possibilities[0][1]] = attack_possibilities[0][2]
 
-            # if self.checker is not None:
-            #     attack_type = attack_possibilities[0][-1]
-            #     self.checker.attack_type(attack_type)
+            if self.checker is not None:
+                self.checker.attack_predictions(attack_possibilities[0][2], attack_possibilities[0][3],
+                                                attack_possibilities[0][4], attack_possibilities[0][1], popularities)
         else:
             self.expected_defend_friend_damage = -99999
 
-            # if self.checker is not None:
-            #     self.checker.attack_type('none')
+            if self.checker is not None:
+                self.checker.attack_predictions(0, 0, 0, 0, popularities)
 
         # # self.printT(player_idx, "        expected_defend_friend_damage: " + str(self.expected_defend_friend_damage))
 
