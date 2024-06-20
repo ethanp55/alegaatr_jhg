@@ -330,10 +330,12 @@ class AssumptionChecker:
         self.prev_collective_strength = strength
 
     def close_to_target_strength(self, desired_community, target) -> None:
+        # Calculate how far away the collective strength is from the target strength
         collective_strength = desired_community.collective_strength
         self.near_target_strength = min(collective_strength / target, 1.0)
 
     def how_many_members_missing(self, desired_community, communities: List[Set[int]]) -> None:
+        # Calculate how many members still need to be added/removed to form the desired community
         desired_group = set(desired_community.s)
         player_group = None
 
@@ -342,11 +344,12 @@ class AssumptionChecker:
                 player_group = community
                 break
 
-        n_differences = len(player_group.symmetric_difference(desired_group))
+        n_differences, total_possible_diffs = len(player_group.symmetric_difference(desired_group)), self.n_players - 1
 
-        self.percent_of_players_needed_for_desired_community = n_differences / self.n_players
+        self.percent_of_players_needed_for_desired_community = n_differences / total_possible_diffs
 
     def prominence(self, desired_community, popularities) -> None:
+        # Calculate the prominence scores
         s = set(desired_community.s)
         group_sum, mx, num_greater = 0, 0.0, 0
         for i in s:
@@ -369,10 +372,12 @@ class AssumptionChecker:
             max_val, rank_val, min(avg_val, 1.0)
 
     def modularity_vs_familiarity(self, desired_community) -> None:
+        # Calculate whether the familiarity is better than modularity
         modularity, familiarity = desired_community.modularity, desired_community.familiarity
         self.familiarity_better_than_modularity = float(familiarity > modularity)
 
     def prosocial(self, desired_community) -> None:
+        # Calculate how good the prosocial score is
         self.prosocial_score = desired_community.prosocial
 
     def desired_community_differences(self, desired_community, was_just_used: bool,
@@ -423,7 +428,7 @@ class AssumptionChecker:
         self.n_attackers_is_low = 1 - (n_attackers / self.n_players)
         self.attackers_are_weak = 1 - (cumulative_pop_of_attackers / pop_sum)
 
-        # Calculate how many attackers are in the CAB's desired community
+        # Calculate how many attackers are in the CAB's desired and detected/current communities
         desired_group = set(desired_community.s)
         player_group = None
         n_in_desired, n_in_current = 0, 0
@@ -701,45 +706,3 @@ class AssumptionChecker:
 
     def assumptions(self) -> Assumptions:
         pass
-
-# # Class that contains all the alignment checkers
-# class AssumptionChecker:
-#     def __init__(self) -> None:
-#         # Helper variables used to estimate assumptions
-#         self.prev_popularity, self.prev_rank = None, None
-#         self.medium_term_popularities, self.long_term_popularities = deque(maxlen=2), deque(maxlen=4)
-#         self.medium_term_ranks, self.long_term_ranks = deque(maxlen=2), deque(maxlen=4)
-#         self.prev_modularities = deque(maxlen=5)
-#         self.prev_communities = None
-#         self.n_players, self.player_idx = None, None
-#         self.prev_collective_strength = None
-#         self.prev_tokens_kept = None
-#         self.prev_popularity_k = None
-#         self.n_tokens = None
-#         self.prev_attack_tokens = None
-#         self.prev_attack_type = None
-#         self.prev_tokens_kept_a = None
-#         self.prev_popularities_a = None
-#
-#         # --------------------------------------------------------------------------------------------------------------
-#         # Assumption estimates from give tokens ------------------------------------------------------------------------
-#         # --------------------------------------------------------------------------------------------------------------
-#         self.percent_of_players_to_give_to = 0.5
-#         self.percent_of_friends_who_reciprocate = 0.5
-#
-#     # ------------------------------------------------------------------------------------------------------------------
-#     # Give tokens checkers ---------------------------------------------------------------------------------------------
-#     # ------------------------------------------------------------------------------------------------------------------
-#
-#     def friends_are_reciprocating(self, influence_matrix: np.array, token_allocations: np.array) -> None:
-#         friend_indices = list(np.where(token_allocations > 0)[0])
-#         n_friends, n_friends_who_reciprocate = len(friend_indices), 0
-#
-#         for friend_idx in friend_indices:
-#             if friend_idx == self.player_idx:
-#                 continue
-#             my_influence_on_friend = influence_matrix[self.player_idx][friend_idx]
-#             friends_influence_on_me = influence_matrix[friend_idx][self.player_idx]
-#             n_friends_who_reciprocate += 1 if friends_influence_on_me >= my_influence_on_friend else 0
-#
-#         self.percent_of_friends_who_reciprocate = n_friends_who_reciprocate / n_friends if n_friends > 0 else 0.0
