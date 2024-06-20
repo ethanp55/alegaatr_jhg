@@ -25,6 +25,10 @@ class AssumptionChecker:
         self.prev_attack_tokens_used = None
         self.prev_attack_gain_pred, self.attack_damage_pred, self.prev_player_to_attack = None, None, None
         self.prev_popularities_a_pred = None
+        self.players_that_have_attacked = {}
+        self.prev_tokens_that_were_given = None
+        self.round_previously_used_g = None
+        self.our_influence_last_time, self.their_influence_within_2 = None, None
 
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from progress checkers ------------------------------------------------------------------
@@ -101,6 +105,18 @@ class AssumptionChecker:
         self.attacked_player_not_in_desired_group = 0.5
         self.attack_damaged_other_player = 0.5
         self.attack_benefited_me = 0.5
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Assumption estimates from give tokens ------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------------------------
+        # 7 total
+        self.does_not_give_too_much = 0.5
+        self.gives_to_all_players_in_desired_group = 0.5
+        self.all_friends_reciprocate = 0.5
+        self.no_friends_have_attacked = 0.5
+        self.no_friends_have_attacked_us = 0.5
+        self.given_to_all_in_desired_group = 0.5
+        self.all_friends_reciprocated_within_2_last_time = 0.5
 
     # Function for initializing static variables used in the checker calculations
     def init_vars(self, player_idx: int, n_players: int, n_tokens: int, game_params: Dict[str, float]) -> None:
@@ -478,7 +494,7 @@ class AssumptionChecker:
                     player_that_was_attacked, tokens_stolen = i, tokens
                     break
 
-            # Calculate how effective the CAB's attack was the last time it was used
+            # Calculate how effective the CAB's attack was the last time it was used (if there was an attack)
             if was_used and tokens_stolen > 0:
                 self.round_previously_used_a = round_num
                 self.pop_before_last_attack = self.prev_popularities_a[self.player_idx]
@@ -553,6 +569,133 @@ class AssumptionChecker:
         self.does_not_attack_too_much = 1 - (n_attack / self.n_tokens)
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Give tokens checkers ---------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    def n_give_tokens(self, token_allocations: np.array) -> None:
+        # Calculate how many of the CAB's tokens it plans to give
+        n_give = 0
+
+        for i in range(self.n_players):
+            n_give += 1 if (i != self.player_idx and token_allocations[i] > 0) else 0
+
+        self.does_not_give_too_much = 1 - (n_give / self.n_players)
+
+    def tokens_to_desired_community(self, token_allocations: np.array, desired_community) -> None:
+        # Calculate how many players in the CAB's desired community it plans to give tokens to
+        desired_group = set(desired_community.s)
+        n_give_to_desired_group = 0
+
+        # The desired group is just us by ourselves
+        if len(desired_group) == 1:
+            n_give_to_desired_group = 1 if token_allocations[self.player_idx] > 0 else 0
+            denominator = 1
+
+        # Otherwise, there's at least one other player in the desired group
+        else:
+            for i in range(self.n_players):
+                n_give_to_desired_group += 1 if (i != self.player_idx and i in desired_group) else 0
+            denominator = len(desired_group) - 1
+
+        self.gives_to_all_players_in_desired_group = n_give_to_desired_group / denominator
+
+    def friends_reciprocate(self, token_allocations: np.array, influence_matrix: np.array) -> None:
+        # Calculate, out of the players the CAB plans to give tokens to, how many reciprocated at least roughly the
+        # same amount of popularity in the previous round
+        friend_indices = list(np.where(token_allocations > 0)[0])
+        n_friends, n_friends_who_reciprocate = 0, 0
+
+        for friend_idx in friend_indices:
+            if friend_idx == self.player_idx:
+                continue
+            n_friends += 1
+            my_influence_on_friend = influence_matrix[self.player_idx][friend_idx]
+            friends_influence_on_me = influence_matrix[friend_idx][self.player_idx]
+            n_friends_who_reciprocate += 1 if friends_influence_on_me >= (my_influence_on_friend * 0.9) else 0
+
+        self.all_friends_reciprocate = n_friends_who_reciprocate / n_friends if n_friends > 0 else 1.0
+
+    def friends_that_have_attacked(self, token_allocations: np.array, influence_matrix: np.array) -> None:
+        # Calculate, out of the players the CAB plans to give tokens to, how many have attacked other players in the
+        # past
+        for i in range(self.n_players):
+            for j in range(self.n_players):
+                if i == j:
+                    continue
+
+                i_influence_on_j = influence_matrix[i][j]
+
+                if i_influence_on_j < 0:
+                    players_i_has_attacked = self.players_that_have_attacked.get(i, [])
+                    if j not in players_i_has_attacked:
+                        players_i_has_attacked.append(j)
+                    self.players_that_have_attacked[i] = players_i_has_attacked
+
+        n_that_have_attacked, n_friends = 0, 0
+
+        for i in range(self.n_players):
+            n_that_have_attacked += 1 if (i != self.player_idx and token_allocations[
+                i] > 0 and i in self.players_that_have_attacked) else 0
+            n_friends += 1 if (i != self.player_idx and token_allocations[i] > 0) else 0
+
+        self.no_friends_have_attacked = (1 - (n_that_have_attacked / n_friends)) if n_friends > 0 else (1 - float(
+            self.player_idx in self.players_that_have_attacked))
+
+        # Calculate, out of the players the CAB plans to give tokens to, how many have attacked us in the past
+        n_that_have_attacked_us = 0
+
+        for i, players_i_has_attacked in self.players_that_have_attacked.items():
+            if i == self.player_idx:
+                continue
+
+            n_that_have_attacked_us += 1 if self.player_idx in players_i_has_attacked else 0
+
+        self.no_friends_have_attacked_us = 1 - (n_that_have_attacked_us / n_friends) if n_friends > 0 else 1.0
+
+    def give_results(self, tokens_that_were_given: np.array, desired_community, was_used: bool, round_num: int,
+                     influence_matrix: np.array) -> None:
+        desired_group = set(desired_community.s)
+
+        if self.prev_tokens_that_were_given is not None:
+            # Of the players that were actually given to, calculate how many are in the CAB's desired group
+            n_in_desired_group = 0
+
+            if len(desired_group) == 1:
+                n_in_desired_group = 1 if self.prev_tokens_that_were_given[self.player_idx] > 0 else 0
+                denominator = 1
+
+            else:
+                for i in range(self.n_players):
+                    n_in_desired_group += 1 if (i != self.player_idx and i in desired_group) else 0
+                denominator = len(desired_group) - 1
+
+            self.given_to_all_in_desired_group = n_in_desired_group / denominator
+
+            # Calculate how much friend reciprocation the CAB received within 2 rounds after the last time it was used
+            if was_used:
+                self.round_previously_used_g = round_num
+                self.our_influence_last_time, self.their_influence_within_2 = {}, {}
+
+                for i in range(self.n_players):
+                    if i != self.player_idx and self.prev_tokens_that_were_given[self.player_idx] > 0:
+                        self.our_influence_last_time[i] = influence_matrix[self.player_idx][i]
+                        self.their_influence_within_2[i] = influence_matrix[i][self.player_idx]
+
+            if self.round_previously_used_g is not None and round_num == self.round_previously_used_g + 1:
+                for i in self.their_influence_within_2.keys():
+                    self.their_influence_within_2[i] = max(self.their_influence_within_2[i],
+                                                           influence_matrix[i][self.player_idx])
+
+            n_friends, n_that_reciprocated = len(self.our_influence_last_time), 0
+
+            for i, our_influence in self.our_influence_last_time.items():
+                their_influence = self.their_influence_within_2[i]
+                n_that_reciprocated += 1 if their_influence >= (our_influence * 0.9) else 0
+
+            self.all_friends_reciprocated_within_2_last_time = n_that_reciprocated / n_friends if n_friends > 0 else 1.0
+
+        self.prev_tokens_that_were_given = tokens_that_were_given
+
+    # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -587,13 +730,6 @@ class AssumptionChecker:
 #     # ------------------------------------------------------------------------------------------------------------------
 #     # Give tokens checkers ---------------------------------------------------------------------------------------------
 #     # ------------------------------------------------------------------------------------------------------------------
-#     def percentage_of_players_to_give_to(self, token_allocations: np.array) -> None:
-#         n_friends = 0
-#
-#         for i in range(self.n_players):
-#             n_friends += 1 if (i != self.player_idx and token_allocations[i] > 0) else 0
-#
-#         self.percent_of_players_to_give_to = n_friends / self.n_players
 #
 #     def friends_are_reciprocating(self, influence_matrix: np.array, token_allocations: np.array) -> None:
 #         friend_indices = list(np.where(token_allocations > 0)[0])

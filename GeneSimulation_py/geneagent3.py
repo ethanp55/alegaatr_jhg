@@ -62,6 +62,7 @@ class GeneAgent3(AbstractAgent):
         self.detected_comm, self.desired_comm = None, None
         self.detected_comm_just_used, self.desired_comm_just_used = None, None
         self.attack_tokens, self.prev_attack_tokens_used = None, None
+        self.give_tokens, self.prev_give_tokens_used = None, None
         self.run_modularity_checker = False
         self.whoami = "gene"
         self.count = 0
@@ -419,11 +420,6 @@ class GeneAgent3(AbstractAgent):
                                                            num_tokens - num_attack_toks - guardo_toks, player_idx,
                                                            influence, popularities, selected_community, attack_alloc)
 
-        # # Give tokens checkers
-        # if self.checker is not None:
-        #     self.checker.percentage_of_players_to_give_to(groups_alloc)
-        #     self.checker.friends_are_reciprocating(influence, groups_alloc)
-
         # update some variables
         transaction_vec = groups_alloc - attack_alloc
 
@@ -446,6 +442,16 @@ class GeneAgent3(AbstractAgent):
             self.checker.attack_results(attack_alloc, v, popularities, I_was_used, round_num, received,
                                         selected_community, communities)
             self.checker.n_attack_tokens(attack_alloc)
+
+        # Give tokens checkers
+        if self.checker is not None:
+            self.give_tokens = groups_alloc
+
+            self.checker.n_give_tokens(groups_alloc)
+            self.checker.tokens_to_desired_community(groups_alloc, selected_community)
+            self.checker.friends_reciprocate(groups_alloc, influence)
+            self.checker.friends_that_have_attacked(groups_alloc, influence)
+            self.checker.give_results(self.prev_give_tokens_used, selected_community, I_was_used, round_num, influence)
 
         self.prev_popularities = popularities
         self.prev_allocations = transaction_vec
