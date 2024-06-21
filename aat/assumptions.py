@@ -60,58 +60,75 @@ from typing import List
 
 @dataclass
 class Assumptions:
-    improved_from_prev_round: float
-    improved_medium_term: float
-    improved_long_term: float
-    rank: float
-    rank_improved_from_prev_round: float
-    rank_improved_medium_term: float
-    rank_improved_long_term: float
-    percentile: float
+    # --------------------------------------------------------------------------------------------------------------
+    # Assumption estimates from progress checkers ------------------------------------------------------------------
+    # --------------------------------------------------------------------------------------------------------------
+    pop_improved_1_round_after: float
+    pop_improved_2_rounds_after: float
+    rel_pop_improved_1_round_after: float
+    rel_pop_improved_2_rounds_after: float
+    rank_1_round_after: float
+    rank_2_rounds_after: float
+    curr_rel_pop: float
+    curr_rank: float
     below_30_rounds: float
     above_30_rounds: float
     below_10_players: float
     above_10_players: float
+    was_just_used: float
     positive_density: float
     negative_density: float
-    percentage_of_positive_edges: float
-    percentage_of_neutral_edges: float
-    percentage_of_negative_edges: float
     modularity_above_ema: float
     modularity_below_ema: float
     communities_changes_from_prev: float
     communities_diffs_with_ihn_max: float
     communities_diffs_with_ihp_min: float
-    below_prev_collective_strength: float
-    above_prev_collective_strength: float
-    below_target_strength: float
-    above_target_strength: float
+    communities_diffs_with_just_used: float
+    communities_diffs_from_last_use: float
+    collective_strength_increased: float
+    community_has_significant_strength: float
+    near_target_strength: float
     percent_of_players_needed_for_desired_community: float
-    prominence_below_avg: float
-    prominence_above_avg: float
+    prominence_avg_val: float
     prominence_max_val: float
     prominence_rank_val: float
-    familiarity_below_modularity: float
-    familiarity_above_modularity: float
+    familiarity_better_than_modularity: float
     prosocial_score: float
-    percent_tokens_kept: float
-    percent_attackers: float
-    percent_pop_of_attackers: float
-    percent_impact_of_attackers: float
-    tokens_kept_below_stolen: float
-    tokens_kept_above_stolen: float
-    my_attack_damaged_other_player: float
-    my_attack_benefited_me: float
-    vengence_attack: float
-    defend_friend_attack: float
-    pillage_attack: float
-    percent_of_players_to_give_to: float
-    percent_of_friends_who_reciprocate: float
+    desired_comm_diffs_with_just_used: float
+    desired_comm_diffs_from_last_use: float
+    does_not_keep_too_much: float
+    n_attackers_is_low: float
+    attackers_are_weak: float
+    defense_was_effective: float
+    defense_was_effective_last_time: float
+    defense_would_have_been_effective: float
+    none_in_desired_community: float
+    none_in_existing_community: float
+    my_last_attack_damaged_other_player: float
+    my_last_attack_benefited_me: float
+    pop_did_not_decrease_after_last_attack: float
+    attack_would_have_damaged_other: float
+    attack_would_have_benefited_us: float
+    does_not_attack_too_much: float
+    attacked_player_not_in_community: float
+    attacked_player_not_in_desired_group: float
+    attack_damaged_other_player: float
+    attack_benefited_me: float
+    does_not_give_too_much: float
+    gives_to_multiple_players: float
+    gives_to_all_players_in_desired_group: float
+    all_friends_reciprocate: float
+    no_friends_have_attacked: float
+    no_friends_have_attacked_us: float
+    given_to_all_in_desired_group: float
+    all_friends_reciprocated_within_2_last_time: float
 
     def __post_init__(self) -> None:
-        attribute_vals = self.__dict__.values()
+        # for name, val in self.__dict__.items():
+        #     if not 0 <= val <= 1:
+        #         print('ISSUE WITH ASSUMPTION VALUE: ', name, val)
 
-        for val in attribute_vals:
+        for val in self.__dict__.values():
             assert 0 <= val <= 1
 
     def alignment_vector(self) -> List[float]:

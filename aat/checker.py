@@ -22,11 +22,9 @@ class AssumptionChecker:
         self.prev_popularities_a = None
         self.round_previously_used_a = None
         self.pop_before_last_attack = None
-        self.prev_attack_tokens_used = None
         self.prev_attack_gain_pred, self.attack_damage_pred, self.prev_player_to_attack = None, None, None
         self.prev_popularities_a_pred = None
         self.players_that_have_attacked = {}
-        self.prev_tokens_that_were_given = None
         self.round_previously_used_g = None
         self.our_influence_last_time, self.their_influence_within_2 = None, None
 
@@ -95,9 +93,9 @@ class AssumptionChecker:
         # Assumption estimates from attacking other players ------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
         # 10 total
-        self.my_attack_damaged_other_player = 0.5
-        self.my_attack_benefited_me = 0.5
-        self.pop_did_not_decrease_after_attack = 0.5
+        self.my_last_attack_damaged_other_player = 0.5
+        self.my_last_attack_benefited_me = 0.5
+        self.pop_did_not_decrease_after_last_attack = 0.5
         self.attack_would_have_damaged_other = 0.5
         self.attack_would_have_benefited_us = 0.5
         self.does_not_attack_too_much = 0.5
@@ -109,8 +107,9 @@ class AssumptionChecker:
         # --------------------------------------------------------------------------------------------------------------
         # Assumption estimates from give tokens ------------------------------------------------------------------------
         # --------------------------------------------------------------------------------------------------------------
-        # 7 total
+        # 8 total
         self.does_not_give_too_much = 0.5
+        self.gives_to_multiple_players = 0.5
         self.gives_to_all_players_in_desired_group = 0.5
         self.all_friends_reciprocate = 0.5
         self.no_friends_have_attacked = 0.5
@@ -145,7 +144,7 @@ class AssumptionChecker:
                 round_1_pop, round_2_pop = round_1_pops[self.player_idx], round_2_pops[self.player_idx]
                 round_1_sum, round_2_sum = sum(round_1_pops), sum(round_2_pops)
                 round_1_relative, round_2_relative = round_1_pop / round_1_sum, round_2_pop / round_2_sum
-                round_2_percentile = percentileofscore(round_2_pops, round_2_pop, kind='rank')
+                round_2_percentile = percentileofscore(round_2_pops, round_2_pop, kind='rank') / 100
 
                 self.pop_improved_1_round_after = float(round_2_pop > round_1_pop)
                 self.rel_pop_improved_1_round_after = float(round_2_relative > round_1_relative)
@@ -161,7 +160,7 @@ class AssumptionChecker:
                 round_1_pop, round_3_pop = round_1_pops[self.player_idx], round_3_pops[self.player_idx]
                 round_1_sum, round_3_sum = sum(round_1_pops), sum(round_3_pops)
                 round_1_relative, round_3_relative = round_1_pop / round_1_sum, round_3_pop / round_3_sum
-                round_3_percentile = percentileofscore(round_3_pops, round_3_pop, kind='rank')
+                round_3_percentile = percentileofscore(round_3_pops, round_3_pop, kind='rank') / 100
 
                 self.pop_improved_2_rounds_after = float(round_3_pop > round_1_pop)
                 self.rel_pop_improved_2_rounds_after = float(round_3_relative > round_1_relative)
@@ -178,7 +177,7 @@ class AssumptionChecker:
 
         # Current relative popularity and percentile/rank
         self.curr_rel_pop = curr_pop / sum(popularities)
-        self.curr_rank = percentileofscore(popularities, curr_pop, kind='rank')
+        self.curr_rank = percentileofscore(popularities, curr_pop, kind='rank') / 100
 
         # Checker how many rounds below/above 30 we are
         if round_num_adjusted <= 30:
@@ -489,12 +488,13 @@ class AssumptionChecker:
     # ------------------------------------------------------------------------------------------------------------------
     # Attack other players checkers ------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
-    def attack_results(self, attack_tokens_used: np.array, v: np.array, popularities: np.array, was_used: bool,
-                       round_num: int, received: np.array, desired_community, communities: List[Set[int]]) -> None:
-        if self.prev_attack_tokens_used is not None:
+    def attack_results(self, attack_tokens_used: Optional[np.array], v: np.array, popularities: np.array,
+                       was_used: bool, round_num: int, received: np.array, desired_community,
+                       communities: List[Set[int]]) -> None:
+        if attack_tokens_used is not None:
             tokens_kept = received[self.player_idx] * self.n_tokens
             player_that_was_attacked, tokens_stolen = None, 0
-            for i, tokens in enumerate(list(self.prev_attack_tokens_used)):
+            for i, tokens in enumerate(list(attack_tokens_used)):
                 if tokens > 0:
                     player_that_was_attacked, tokens_stolen = i, tokens
                     break
@@ -510,16 +510,16 @@ class AssumptionChecker:
                 percent_stolen = tokens_stolen / (tokens_stolen + tokens_kept)
                 my_benefit = v[self.player_idx][self.player_idx] * percent_stolen
 
-                self.my_attack_damaged_other_player = min(my_impact_on_that_player / their_popularity, 1.0) \
+                self.my_last_attack_damaged_other_player = min(my_impact_on_that_player / their_popularity, 1.0) \
                     if their_popularity > 0 else 0.0
-                self.my_attack_benefited_me = min(my_benefit / my_popularity, 1.0) if my_popularity > 0 else 0.0
+                self.my_last_attack_benefited_me = min(my_benefit / my_popularity, 1.0) if my_popularity > 0 else 0.0
 
             # Calculate whether our popularity decreased 2 rounds after the CAB was last used and attacked another
             # player
             if self.round_previously_used_a is not None and round_num == self.round_previously_used_a + 1:
                 my_popularity = popularities[self.player_idx]
-                self.pop_did_not_decrease_after_attack = min(1.0, my_popularity / self.pop_before_last_attack) \
-                    if self.pop_before_last_attack > 0 else 0.5
+                self.pop_did_not_decrease_after_last_attack = min(1.0, my_popularity / self.pop_before_last_attack) \
+                    if self.pop_before_last_attack > 0 else 1.0
 
             # Calculate how effective the previous agent's attack was
             if tokens_stolen > 0:
@@ -550,12 +550,10 @@ class AssumptionChecker:
                 player_that_was_attacked not in desired_group) if player_that_was_attacked is not None else 1.0
 
         self.prev_popularities_a = popularities
-        self.prev_attack_tokens_used = attack_tokens_used
 
     def attack_predictions(self, n_tokens: int, gain_per_token: float, damage: float, player_to_attack: int,
                            popularities: np.array) -> None:
-        gain = n_tokens * gain_per_token
-
+        # Calculate whether the attack would have benefited us and damaged the other player, had the CAB agent been used
         if self.prev_attack_gain_pred is not None:
             my_pop = self.prev_popularities_a_pred[self.player_idx]
             their_pop = self.prev_popularities_a_pred[self.prev_player_to_attack]
@@ -564,6 +562,7 @@ class AssumptionChecker:
                 if my_pop > 0 else 0.0
             self.attack_would_have_damaged_other = max(0.0, min(1.0, damage / their_pop)) if their_pop > 0 else 0.0
 
+        gain = n_tokens * gain_per_token
         self.prev_attack_gain_pred = gain
         self.prev_player_to_attack = player_to_attack
         self.prev_popularities_a_pred = popularities
@@ -576,29 +575,30 @@ class AssumptionChecker:
     # ------------------------------------------------------------------------------------------------------------------
     # Give tokens checkers ---------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
-    def n_give_tokens(self, token_allocations: np.array) -> None:
+    def n_give_tokens(self, token_allocations: np.array, n_keep_tokens: int) -> None:
         # Calculate how many of the CAB's tokens it plans to give
-        n_give = 0
+        n_give = sum([tokens for i, tokens in enumerate(list(token_allocations)) if i != self.player_idx])
+        n_friends = sum([int(tokens > 0) for i, tokens in enumerate(list(token_allocations)) if i != self.player_idx])
+        n_friends += 1 if n_keep_tokens > 0 else 0
 
-        for i in range(self.n_players):
-            n_give += 1 if (i != self.player_idx and token_allocations[i] > 0) else 0
+        self.does_not_give_too_much = 1 - (n_give / self.n_tokens)
+        self.gives_to_multiple_players = n_friends / self.n_players
 
-        self.does_not_give_too_much = 1 - (n_give / self.n_players)
-
-    def tokens_to_desired_community(self, token_allocations: np.array, desired_community) -> None:
+    def tokens_to_desired_community(self, token_allocations: np.array, desired_community, n_keep_tokens: int) -> None:
         # Calculate how many players in the CAB's desired community it plans to give tokens to
         desired_group = set(desired_community.s)
         n_give_to_desired_group = 0
 
         # The desired group is just us by ourselves
         if len(desired_group) == 1:
-            n_give_to_desired_group = 1 if token_allocations[self.player_idx] > 0 else 0
+            n_give_to_desired_group = 1 if n_keep_tokens > 0 else 0
             denominator = 1
 
         # Otherwise, there's at least one other player in the desired group
         else:
             for i in range(self.n_players):
-                n_give_to_desired_group += 1 if (i != self.player_idx and i in desired_group) else 0
+                n_give_to_desired_group += 1 if (
+                        i != self.player_idx and i in desired_group and token_allocations[i] > 0) else 0
             denominator = len(desired_group) - 1
 
         self.gives_to_all_players_in_desired_group = n_give_to_desired_group / denominator
@@ -652,25 +652,27 @@ class AssumptionChecker:
             if i == self.player_idx:
                 continue
 
-            n_that_have_attacked_us += 1 if self.player_idx in players_i_has_attacked else 0
+            n_that_have_attacked_us += 1 if (
+                    self.player_idx in players_i_has_attacked and token_allocations[i] > 0) else 0
 
         self.no_friends_have_attacked_us = 1 - (n_that_have_attacked_us / n_friends) if n_friends > 0 else 1.0
 
-    def give_results(self, tokens_that_were_given: np.array, desired_community, was_used: bool, round_num: int,
-                     influence_matrix: np.array) -> None:
+    def give_results(self, tokens_that_were_given: Optional[np.array], desired_community, was_used: bool,
+                     round_num: int, influence_matrix: np.array, tokens_that_were_kept: int) -> None:
         desired_group = set(desired_community.s)
 
-        if self.prev_tokens_that_were_given is not None:
+        if tokens_that_were_given is not None:
             # Of the players that were actually given to, calculate how many are in the CAB's desired group
             n_in_desired_group = 0
 
             if len(desired_group) == 1:
-                n_in_desired_group = 1 if self.prev_tokens_that_were_given[self.player_idx] > 0 else 0
+                n_in_desired_group = 1 if tokens_that_were_kept > 0 else 0
                 denominator = 1
 
             else:
                 for i in range(self.n_players):
-                    n_in_desired_group += 1 if (i != self.player_idx and i in desired_group) else 0
+                    n_in_desired_group += 1 if (
+                            i != self.player_idx and i in desired_group and tokens_that_were_given[i] > 0) else 0
                 denominator = len(desired_group) - 1
 
             self.given_to_all_in_desired_group = n_in_desired_group / denominator
@@ -681,7 +683,7 @@ class AssumptionChecker:
                 self.our_influence_last_time, self.their_influence_within_2 = {}, {}
 
                 for i in range(self.n_players):
-                    if i != self.player_idx and self.prev_tokens_that_were_given[self.player_idx] > 0:
+                    if i != self.player_idx and tokens_that_were_given[self.player_idx] > 0:
                         self.our_influence_last_time[i] = influence_matrix[self.player_idx][i]
                         self.their_influence_within_2[i] = influence_matrix[i][self.player_idx]
 
@@ -698,11 +700,69 @@ class AssumptionChecker:
 
             self.all_friends_reciprocated_within_2_last_time = n_that_reciprocated / n_friends if n_friends > 0 else 1.0
 
-        self.prev_tokens_that_were_given = tokens_that_were_given
-
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
 
     def assumptions(self) -> Assumptions:
-        pass
+        return Assumptions(
+            self.pop_improved_1_round_after,
+            self.pop_improved_2_rounds_after,
+            self.rel_pop_improved_1_round_after,
+            self.rel_pop_improved_2_rounds_after,
+            self.rank_1_round_after,
+            self.rank_2_rounds_after,
+            self.curr_rel_pop,
+            self.curr_rank,
+            self.below_30_rounds,
+            self.above_30_rounds,
+            self.below_10_players,
+            self.above_10_players,
+            self.was_just_used,
+            self.positive_density,
+            self.negative_density,
+            self.modularity_above_ema,
+            self.modularity_below_ema,
+            self.communities_changes_from_prev,
+            self.communities_diffs_with_ihn_max,
+            self.communities_diffs_with_ihp_min,
+            self.communities_diffs_with_just_used,
+            self.communities_diffs_from_last_use,
+            self.collective_strength_increased,
+            self.community_has_significant_strength,
+            self.near_target_strength,
+            self.percent_of_players_needed_for_desired_community,
+            self.prominence_avg_val,
+            self.prominence_max_val,
+            self.prominence_rank_val,
+            self.familiarity_better_than_modularity,
+            self.prosocial_score,
+            self.desired_comm_diffs_with_just_used,
+            self.desired_comm_diffs_from_last_use,
+            self.does_not_keep_too_much,
+            self.n_attackers_is_low,
+            self.attackers_are_weak,
+            self.defense_was_effective,
+            self.defense_was_effective_last_time,
+            self.defense_would_have_been_effective,
+            self.none_in_desired_community,
+            self.none_in_existing_community,
+            self.my_last_attack_damaged_other_player,
+            self.my_last_attack_benefited_me,
+            self.pop_did_not_decrease_after_last_attack,
+            self.attack_would_have_damaged_other,
+            self.attack_would_have_benefited_us,
+            self.does_not_attack_too_much,
+            self.attacked_player_not_in_community,
+            self.attacked_player_not_in_desired_group,
+            self.attack_damaged_other_player,
+            self.attack_benefited_me,
+            self.does_not_give_too_much,
+            self.gives_to_multiple_players,
+            self.gives_to_all_players_in_desired_group,
+            self.all_friends_reciprocate,
+            self.no_friends_have_attacked,
+            self.no_friends_have_attacked_us,
+            self.given_to_all_in_desired_group,
+            self.all_friends_reciprocated_within_2_last_time
+        )
