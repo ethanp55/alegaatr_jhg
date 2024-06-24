@@ -692,13 +692,15 @@ class AssumptionChecker:
                     self.their_influence_within_2[i] = max(self.their_influence_within_2[i],
                                                            influence_matrix[i][self.player_idx])
 
-            n_friends, n_that_reciprocated = len(self.our_influence_last_time), 0
+            if self.our_influence_last_time is not None:
+                n_friends, n_that_reciprocated = len(self.our_influence_last_time), 0
 
-            for i, our_influence in self.our_influence_last_time.items():
-                their_influence = self.their_influence_within_2[i]
-                n_that_reciprocated += 1 if their_influence >= (our_influence * 0.9) else 0
+                for i, our_influence in self.our_influence_last_time.items():
+                    their_influence = self.their_influence_within_2[i]
+                    n_that_reciprocated += 1 if their_influence >= (our_influence * 0.9) else 0
 
-            self.all_friends_reciprocated_within_2_last_time = n_that_reciprocated / n_friends if n_friends > 0 else 1.0
+                self.all_friends_reciprocated_within_2_last_time = n_that_reciprocated / n_friends \
+                    if n_friends > 0 else 1.0
 
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------

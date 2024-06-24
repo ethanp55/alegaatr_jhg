@@ -1,4 +1,4 @@
-from aat.assumptions import Assumptions
+import csv
 from GeneSimulation_py.geneagent3 import GeneAgent3
 import numpy as np
 import pandas as pd
@@ -56,7 +56,19 @@ class GeneratorPool:
 
         return generator_to_token_allocs
 
-    # Returns the assumption estimates of each generator, as long as the check_assumptions variable is set (otherwise
-    # the returned dictionary will be empty)
-    def generator_assumption_estimates(self) -> Dict[int, Assumptions]:
-        return self.generator_to_assumption_estimates
+    def train_aat(self, increase: float, baseline_increase: float, generator_just_used_idx: int) -> None:
+        correction_term = increase / baseline_increase
+        generator_assumption_estimates = self.generator_to_assumption_estimates[generator_just_used_idx]
+        alignment_vector = generator_assumption_estimates.alignment_vector()
+
+        # Store the alignment vector
+        file_path = f'../aat/training_data/generator_{generator_just_used_idx}_vectors'
+        with open(file_path, 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(alignment_vector)
+
+        # Store the correction term
+        file_path = f'../aat/training_data/generator_{generator_just_used_idx}_correction_terms'
+        with open(file_path, 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([correction_term])

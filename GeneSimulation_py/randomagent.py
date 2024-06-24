@@ -16,7 +16,7 @@ class RandomAgent(AbstractAgent):
 
     def play_round(self, player_idx, round_num, recieved, popularities, influence, extra_data, v):
         tkns = len(popularities) * 2
-        tax_tkns = extra_data[0].get('taxes', 0)
+        tax_tkns = 0
         random_vec = np.random.uniform(-1, 1, size=recieved.shape)
         if tax_tkns != 0 or not self.pay_taxes:
             random_vec[0] = 0
