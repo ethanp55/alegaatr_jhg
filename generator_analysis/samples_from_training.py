@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE

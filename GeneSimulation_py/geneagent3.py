@@ -289,12 +289,8 @@ class GeneAgent3(AbstractAgent):
 
         return theStr
 
-    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, I_was_used=False):
+    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, was_just_used=False):
         self.run_modularity_checker = True
-
-        if round_num % 10 == 0:
-            I_was_used = True
-        # I_was_used = True
 
         self.printT(player_idx, str(received))
 
@@ -336,7 +332,7 @@ class GeneAgent3(AbstractAgent):
 
         # Progress checkers
         if self.checker is not None:
-            self.checker.popularity_increased(round_num, I_was_used, self.pop_history)
+            self.checker.popularity_increased(round_num, was_just_used, self.pop_history)
             self.checker.current_values(round_num, popularities)
             self.checker.society_size()
 
@@ -356,17 +352,17 @@ class GeneAgent3(AbstractAgent):
         if self.checker is not None:
             assert ihn_max_communities is not None and ihp_min_communities is not None
             self.detected_comm = communities
-            if I_was_used:
+            if was_just_used:
                 self.detected_comm_just_used = communities
 
             self.checker.graph_connectedness(influence)
-            self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities, I_was_used,
+            self.checker.changes_in_communities(communities, ihn_max_communities, ihp_min_communities, was_just_used,
                                                 self.detected_comm_just_used)
 
         # Determine desired community checkers
         if self.checker is not None:
             self.desired_comm = selected_community
-            if I_was_used:
+            if was_just_used:
                 self.desired_comm_just_used = selected_community
 
             self.checker.collective_strength(selected_community)
@@ -375,7 +371,7 @@ class GeneAgent3(AbstractAgent):
             self.checker.prominence(selected_community, popularities)
             self.checker.modularity_vs_familiarity(selected_community)
             self.checker.prosocial(selected_community)
-            self.checker.desired_community_differences(selected_community, I_was_used, self.desired_comm_just_used)
+            self.checker.desired_community_differences(selected_community, was_just_used, self.desired_comm_just_used)
 
         # figure out how many tokens to keep
         self.estimate_keeping(player_idx, num_players, num_tokens, communities)
@@ -432,26 +428,31 @@ class GeneAgent3(AbstractAgent):
         if self.checker is not None:
             self.checker.n_tokens_kept(guardo_toks)
             self.checker.attackers(received, popularities, selected_community, communities)
-            self.checker.defense_strength(received, popularities, guardo_toks, I_was_used)
+            self.checker.defense_strength(received, popularities, guardo_toks, was_just_used)
 
         # Attack checkers
         if self.checker is not None:
+            if was_just_used:
+                self.prev_attack_tokens_used = self.attack_tokens
             self.attack_tokens = attack_alloc
 
-            self.checker.attack_results(self.prev_attack_tokens_used, v, popularities, I_was_used, round_num, received,
+            self.checker.attack_results(self.prev_attack_tokens_used, v, popularities, was_just_used, round_num,
+                                        received,
                                         selected_community, communities)
             self.checker.n_attack_tokens(attack_alloc)
 
         # Give tokens checkers
         if self.checker is not None:
-            self.give_tokens = groups_alloc
-            self.keep_tokens = guardo_toks
+            if was_just_used:
+                self.prev_give_tokens_used, self.prev_tokens_kept = self.give_tokens, self.keep_tokens
+            self.give_tokens, self.keep_tokens = groups_alloc, guardo_toks
 
             self.checker.n_give_tokens(groups_alloc, guardo_toks)
             self.checker.tokens_to_desired_community(groups_alloc, selected_community, guardo_toks)
             self.checker.friends_reciprocate(groups_alloc, influence)
             self.checker.friends_that_have_attacked(groups_alloc, influence)
-            self.checker.give_results(self.prev_give_tokens_used, selected_community, I_was_used, round_num, influence,
+            self.checker.give_results(self.prev_give_tokens_used, selected_community, was_just_used, round_num,
+                                      influence,
                                       self.prev_tokens_kept)
 
         self.prev_popularities = popularities
