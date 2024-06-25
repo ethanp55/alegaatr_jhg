@@ -164,6 +164,17 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
     if folder_to_save_to is not None:
         sim.save(folder_to_save_to)
 
+    for i, player in enumerate(players):
+        player.record_final_results(
+            i,
+            rounds,
+            sim.get_transaction()[:, i],
+            sim.get_popularity(),
+            sim.get_influence(),
+            sim.get_extra_data(i),
+            sim.get_v()
+        )
+
     # if hasGovment == True:
     #     return sim.get_popularity()[1:], runningTotal / rounds
     # else:

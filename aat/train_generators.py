@@ -54,28 +54,32 @@ from typing import List
 
 # Simple bandit agent that periodically explores and exploits otherwise
 class BasicBandit(AbstractAgent):
-    def __init__(self, epsilon: float, epsilon_decay: float, use_half_of_generators: bool = False,
-                 check_assumptions: bool = False) -> None:
+    def __init__(self, epsilon: float, epsilon_decay: float, check_assumptions: bool = False) -> None:
         super().__init__()
         self.whoami = 'BasicBandit'
         self.epsilon, self.epsilon_decay = epsilon, epsilon_decay
-        self.generator_pool = GeneratorPool(only_use_half=use_half_of_generators, check_assumptions=check_assumptions)
+        self.generator_pool = GeneratorPool(check_assumptions=check_assumptions)
+        self.check_assumptions = check_assumptions
         self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
         self.generator_to_use_idx = None
         self.empirical_increases = {}
-        self.player_idx, self.prev_popularity = None, None
+        self.prev_popularity = None
 
     def setGameParams(self, game_params, forced_random) -> None:
         for generator in self.generator_pool.generators:
             generator.setGameParams(game_params, forced_random)
 
+    def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
+                             influence: np.array, extra_data, v: np.array) -> None:
+        if self.check_assumptions:
+            self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
+                                          self.generator_to_use_idx, BASELINE)
+
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array) -> np.array:
-        if self.player_idx is None:
-            self.player_idx = player_idx
+        curr_popularity = popularities[player_idx]
 
         # Update empirical rewards
-        curr_popularity = popularities[self.player_idx]
         if self.prev_popularity is not None:
             increase = curr_popularity - self.prev_popularity
             self.empirical_increases[self.generator_to_use_idx] = \
@@ -116,16 +120,23 @@ class BasicBandit(AbstractAgent):
 
 # Agent that just randomly (uniform) chooses a generator to use
 class UniformSelector(AbstractAgent):
-    def __init__(self, use_half_of_generators: bool = False, check_assumptions: bool = False) -> None:
+    def __init__(self, check_assumptions: bool = False) -> None:
         super().__init__()
         self.whoami = 'UniformSelector'
-        self.generator_pool = GeneratorPool(only_use_half=use_half_of_generators, check_assumptions=check_assumptions)
+        self.generator_pool = GeneratorPool(check_assumptions=check_assumptions)
+        self.check_assumptions = check_assumptions
         self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
         self.generator_to_use_idx = None
 
     def setGameParams(self, game_params, forced_random) -> None:
         for generator in self.generator_pool.generators:
             generator.setGameParams(game_params, forced_random)
+
+    def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
+                             influence: np.array, extra_data, v: np.array) -> None:
+        if self.check_assumptions:
+            self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
+                                          self.generator_to_use_idx, BASELINE)
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array) -> np.array:
@@ -140,10 +151,11 @@ class UniformSelector(AbstractAgent):
 
 
 class FavorMoreRecent(AbstractAgent):
-    def __init__(self, use_half_of_generators: bool = False, check_assumptions: bool = False) -> None:
+    def __init__(self, check_assumptions: bool = False) -> None:
         super().__init__()
         self.whoami = 'FavorMoreRecent'
-        self.generator_pool = GeneratorPool(only_use_half=use_half_of_generators, check_assumptions=check_assumptions)
+        self.generator_pool = GeneratorPool(check_assumptions=check_assumptions)
+        self.check_assumptions = check_assumptions
         self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
         self.generator_to_use_idx, self.prev_generator_idx = None, None
         self.n_rounds_since_last_use = {}
@@ -153,6 +165,12 @@ class FavorMoreRecent(AbstractAgent):
     def setGameParams(self, game_params, forced_random) -> None:
         for generator in self.generator_pool.generators:
             generator.setGameParams(game_params, forced_random)
+
+    def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
+                             influence: np.array, extra_data, v: np.array) -> None:
+        if self.check_assumptions:
+            self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
+                                          self.generator_to_use_idx, BASELINE)
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array) -> np.array:
@@ -281,19 +299,23 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-
 N_EPOCHS = 30
 INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 N_PLAYERS = [5, 10, 20]
 N_ROUNDS = [20, 30, 50, 100]
 N_CATS = [0, 1, 2]
 BASELINE = 25
-USE_HALF_OF_GENERATORS = False
 
 n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS) * 11 * 5
 progress_percentage_chunk = int(0.01 * n_training_iterations)
 curr_iteration = 0
 
+# Reset any existing training files (opening a file in write mode will truncate it)
+for file in os.listdir('../aat/training_data/'):
+    with open(f'../aat/training_data/{file}', 'w', newline='') as f:
+        pass
+
+# Run the training process
 for epoch in range(N_EPOCHS):
     print(f'Epoch {epoch + 1}')
 
@@ -322,13 +344,9 @@ for epoch in range(N_EPOCHS):
                     for opponents in list_of_opponents:
                         # Create different agents to train on
                         agents_to_train_on = []
-                        agents_to_train_on.append(
-                            BasicBandit(0.1, 0.99, use_half_of_generators=USE_HALF_OF_GENERATORS,
-                                        check_assumptions=True))
-                        agents_to_train_on.append(
-                            UniformSelector(use_half_of_generators=USE_HALF_OF_GENERATORS, check_assumptions=True))
-                        agents_to_train_on.append(
-                            FavorMoreRecent(use_half_of_generators=USE_HALF_OF_GENERATORS, check_assumptions=True))
+                        agents_to_train_on.append(BasicBandit(0.1, 0.99, check_assumptions=True))
+                        agents_to_train_on.append(UniformSelector(check_assumptions=True))
+                        agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
                         # agents_to_train_on.append(BBL())
                         # agents_to_train_on.append(SPP())
 

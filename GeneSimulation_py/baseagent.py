@@ -8,3 +8,6 @@ class AbstractAgent:
 
     def setGameParams(self, gameParams, visualTraits, _forcedRandom):
         pass
+
+    def record_final_results(self, player_idx, round_num, recieved, popularities, influence, extra_data, v):
+        pass
