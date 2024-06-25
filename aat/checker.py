@@ -19,6 +19,7 @@ class AssumptionChecker:
         self.prev_collective_strength = None
         self.prev_popularity = None
         self.prev_tokens_kept = None
+        self.prev_popularities_k = None
         self.prev_popularities_a = None
         self.round_previously_used_a = None
         self.pop_before_last_attack = None
@@ -328,7 +329,7 @@ class AssumptionChecker:
 
         self.prev_collective_strength = strength
 
-    def close_to_target_strength(self, desired_community, target) -> None:
+    def close_to_target_strength(self, desired_community, target: float) -> None:
         # Calculate how far away the collective strength is from the target strength
         collective_strength = desired_community.collective_strength
         self.near_target_strength = min(collective_strength / target, 1.0)
@@ -347,7 +348,7 @@ class AssumptionChecker:
 
         self.percent_of_players_needed_for_desired_community = n_differences / total_possible_diffs
 
-    def prominence(self, desired_community, popularities) -> None:
+    def prominence(self, desired_community, popularities: np.array) -> None:
         # Calculate the prominence scores
         s = set(desired_community.s)
         group_sum, mx, num_greater = 0, 0.0, 0
@@ -445,45 +446,50 @@ class AssumptionChecker:
         self.none_in_existing_community = 1 - (n_in_current / len(player_group))
 
     def defense_strength(self, received: np.array, popularities: np.array, tokens_kept: int, was_used: bool) -> None:
-        impact_with_no_tokens, true_impact, what_if_impact, c_take = 0, 0, 0, self.game_params['steal']
-        pop = popularities[self.player_idx]
+        if self.prev_popularities_k is not None:
+            impact_with_no_tokens, true_impact, what_if_impact, c_take = 0, 0, 0, self.game_params['steal']
+            pop = self.prev_popularities_k[self.player_idx]
 
-        # Calculate how effective the defense was by comparing what would have happened if no tokens were kept
-        for i, tokens_received in enumerate(list(received)):
-            if tokens_received < 0 and i != self.player_idx:
-                steal_impact = c_take * -received[i]
-                impact_with_no_tokens += steal_impact
-
-        for i, tokens_received in enumerate(list(received)):
-            if tokens_received < 0 and i != self.player_idx:
-                numerator = pop * received[self.player_idx]
-                denominator = sum([popularities[j] * -received[j] for j in range(len(received)) if
-                                   received[j] < 0 and j != self.player_idx])
-                steal_impact = c_take * max(0, 1 - (numerator / denominator)) * -received[i]
-                true_impact += steal_impact
-
-        self.defense_was_effective = (1 - (true_impact / impact_with_no_tokens)) if impact_with_no_tokens != 0 else 0.5
-
-        # Calculate how effective the CAB's defense was the last time it was used
-        if was_used and impact_with_no_tokens != 0:
-            self.defense_was_effective_last_time = self.defense_was_effective
-
-        # Calculate how effective the CAB's defense would have been if it had been used
-        if self.prev_tokens_kept is not None:
-            proportion_kept = self.prev_tokens_kept / self.n_tokens
+            # Calculate how effective the defense was by comparing what would have happened if no tokens were kept
+            for i, tokens_received in enumerate(list(received)):
+                if tokens_received < 0 and i != self.player_idx:
+                    steal_impact = self.prev_popularities_k[i] * c_take * -received[i]
+                    impact_with_no_tokens += steal_impact
 
             for i, tokens_received in enumerate(list(received)):
                 if tokens_received < 0 and i != self.player_idx:
-                    numerator = pop * proportion_kept
-                    denominator = sum([popularities[j] * -received[j] for j in range(len(received)) if
+                    numerator = pop * received[self.player_idx]
+                    denominator = sum([self.prev_popularities_k[j] * -received[j] for j in range(len(received)) if
                                        received[j] < 0 and j != self.player_idx])
-                    steal_impact = c_take * max(0, 1 - (numerator / denominator)) * -received[i]
-                    what_if_impact += steal_impact
+                    steal_impact = (self.prev_popularities_k[i] * c_take * max(0, 1 - (numerator / denominator)) *
+                                    -received[i]) if denominator != 0 else 0
+                    true_impact += steal_impact
 
-            self.defense_would_have_been_effective = (
-                    1 - (what_if_impact / impact_with_no_tokens)) if impact_with_no_tokens != 0 else 0.5
+            self.defense_was_effective = (
+                    1 - (true_impact / impact_with_no_tokens)) if impact_with_no_tokens != 0 else 0.5
+
+            # Calculate how effective the CAB's defense was the last time it was used
+            if was_used and impact_with_no_tokens != 0:
+                self.defense_was_effective_last_time = self.defense_was_effective
+
+            # Calculate how effective the CAB's defense would have been if it had been used
+            if self.prev_tokens_kept is not None:
+                proportion_kept = self.prev_tokens_kept / self.n_tokens
+
+                for i, tokens_received in enumerate(list(received)):
+                    if tokens_received < 0 and i != self.player_idx:
+                        numerator = pop * proportion_kept
+                        denominator = sum([self.prev_popularities_k[j] * -received[j] for j in range(len(received)) if
+                                           received[j] < 0 and j != self.player_idx])
+                        steal_impact = (self.prev_popularities_k[i] * c_take * max(0, 1 - (numerator / denominator)) *
+                                        -received[i]) if denominator != 0 else 0
+                        what_if_impact += steal_impact
+
+                self.defense_would_have_been_effective = (
+                        1 - (what_if_impact / impact_with_no_tokens)) if impact_with_no_tokens != 0 else 0.5
 
         self.prev_tokens_kept = tokens_kept
+        self.prev_popularities_k = popularities
 
     # ------------------------------------------------------------------------------------------------------------------
     # Attack other players checkers ------------------------------------------------------------------------------------

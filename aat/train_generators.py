@@ -18,30 +18,24 @@ from typing import List
 
 # General training conditions:
 #   - 5 different initial popularities
-#   - 5 players, 10 players, 15 players, 20 players
-#   - 20 rounds, 30 rounds, 40 rounds, 50 rounds, 100 rounds
-#   - 0 cats, 1 cat, 2 cats
-#   - Multiple epochs (maybe 30?)
+#   - 5 players, 10 players, 20 players
+#   - 20 rounds, 30 rounds, 50 rounds
+#   - 0 cats, 1 cat
+#   - 30 epochs
 
 # Opponents:
-#   - Random selection of generators
 #   - CABs with randomly-selected parameters
 #   - Random selection of best CABs when trained with no cats
 #   - Random selection of best CABs when trained with 1 cat
 #   - Random selection of best CABs when trained with 2 cats
 #   - Random agents
-#   - Random mixture of all of the above
 #   - Basic bandits with epsilon = 0.1, decay = 0.99
-#   - BBL
-#   - S++
-#   - Random mixture of bandits/choosers
+#   - Random mixture of all of the above
 
 # Generator training conditions:
 #   - Basic bandit with epsilon = 0.1, decay = 0.99
 #   - Agent that randomly selects generators - uniform
 #   - Agent that randomly selects generators - based on how long it's been since last used (more recent is more likely)
-#   - BBL
-#   - S++
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -203,17 +197,6 @@ class FavorMoreRecent(AbstractAgent):
 # ----------------------------------------------------------------------------------------------------------------------
 # Functions for creating the society of players ------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
-def random_selection_of_generators(max_players: int = 20) -> List[AbstractAgent]:
-    generators, generator_df = [], pd.read_csv(f'../ResultsSaved/generator_genes/genes.csv', header=None)
-
-    # Read in the genes for the generators
-    for i in range(len(generator_df)):
-        gene_str = generator_df.iloc[i, 0]
-        generators.append(GeneAgent3(gene_str, 1))
-
-    return list(np.random.choice(generators, size=max_players, replace=True))
-
-
 def cabs_with_random_params(max_players: int = 20) -> List[AbstractAgent]:
     # A CAB will choose random parameters if the gene string is empty ('')
     return [GeneAgent3('', 1) for _ in range(max_players)]
@@ -240,37 +223,18 @@ def random_agents(max_players: int = 20) -> List[AbstractAgent]:
     return [RandomAgent() for _ in range(max_players)]
 
 
+def basic_bandits(epsilon: float, epsilon_decay: float, max_players: int = 20) -> List[AbstractAgent]:
+    return [BasicBandit(epsilon, epsilon_decay) for _ in range(max_players)]
+
+
 def random_mixture_of_all_types(max_players: int = 20) -> List[AbstractAgent]:
     agents = []
-    agents.extend(random_selection_of_generators(max_players))
     agents.extend(cabs_with_random_params(max_players))
     agents.extend(random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/', max_players))
     agents.extend(random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/', max_players))
     agents.extend(random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', max_players))
     agents.extend(random_agents(max_players))
-
-    np.random.shuffle(agents)
-
-    return agents[:max_players]
-
-
-def basic_bandits(epsilon: float, epsilon_decay: float, max_players: int = 20) -> List[AbstractAgent]:
-    return [BasicBandit(epsilon, epsilon_decay) for _ in range(max_players)]
-
-
-def bbls(max_players: int = 20) -> List[AbstractAgent]:
-    pass
-
-
-def spps(max_players: int = 20) -> List[AbstractAgent]:
-    pass
-
-
-def random_mixture_of_selectors(max_players: int = 20) -> List[AbstractAgent]:
-    agents = []
     agents.extend(basic_bandits(0.1, 0.99, max_players))
-    # agents.extend(bbls(max_players))
-    # agents.extend(spps(max_players))
 
     np.random.shuffle(agents)
 
@@ -299,14 +263,14 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-N_EPOCHS = 30
+N_EPOCHS = 1
 INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 N_PLAYERS = [5, 10, 20]
-N_ROUNDS = [20, 30, 50, 100]
-N_CATS = [0, 1, 2]
+N_ROUNDS = [20, 30, 50]
+N_CATS = [0, 1]
 BASELINE = 25
 
-n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS) * 11 * 5
+n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS) * 7 * 3
 progress_percentage_chunk = int(0.01 * n_training_iterations)
 curr_iteration = 0
 
@@ -326,7 +290,6 @@ for epoch in range(N_EPOCHS):
                     # Create players, aside from main agent to train on and any cats
                     n_other_players = n_players - 1 - n_cats
                     list_of_opponents = []
-                    list_of_opponents.append(random_selection_of_generators(n_other_players))
                     list_of_opponents.append(cabs_with_random_params(n_other_players))
                     list_of_opponents.append(
                         random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/', n_other_players))
@@ -335,11 +298,8 @@ for epoch in range(N_EPOCHS):
                     list_of_opponents.append(
                         random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', n_other_players))
                     list_of_opponents.append(random_agents(n_other_players))
-                    list_of_opponents.append(random_mixture_of_all_types(n_other_players))
                     list_of_opponents.append(basic_bandits(0.1, 0.99, n_other_players))
-                    # list_of_opponents.append(bbls(n_other_players))
-                    # list_of_opponents.append(spps(n_other_players))
-                    list_of_opponents.append(random_mixture_of_selectors(n_other_players))
+                    list_of_opponents.append(random_mixture_of_all_types(n_other_players))
 
                     for opponents in list_of_opponents:
                         # Create different agents to train on
@@ -347,8 +307,6 @@ for epoch in range(N_EPOCHS):
                         agents_to_train_on.append(BasicBandit(0.1, 0.99, check_assumptions=True))
                         agents_to_train_on.append(UniformSelector(check_assumptions=True))
                         agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
-                        # agents_to_train_on.append(BBL())
-                        # agents_to_train_on.append(SPP())
 
                         for agent_to_train_on in agents_to_train_on:
                             # Create cats (if any)
