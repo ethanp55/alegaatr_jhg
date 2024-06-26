@@ -310,6 +310,7 @@ for epoch in range(N_EPOCHS):
                             n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(
                                 N_ROUNDS) * len(N_CATS) * len(list_of_opponents) * len(agents_to_train_on)
                             progress_percentage_chunk = int(0.05 * n_training_iterations)
+                            print(n_training_iterations, progress_percentage_chunk)
 
                         for agent_to_train_on in agents_to_train_on:
                             # Create cats (if any)
