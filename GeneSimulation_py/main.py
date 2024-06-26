@@ -597,7 +597,7 @@ def define_initial_pops(init_pop, num_players):
         random.shuffle(initial_pops)
     elif init_pop == "highlow":
         initial_pops = random.sample(range(1, 51), num_players)
-        for i in range(0, num_players / 2):
+        for i in range(0, num_players // 2):
             initial_pops[i] += 150
         random.shuffle(initial_pops)
     else:

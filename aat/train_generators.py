@@ -11,15 +11,14 @@ import pandas as pd
 from typing import List
 
 
-# TODO: ask Dr. Crandall about both of these points
-# How to create training labels:
-#   - Average popularity increase per round, from the end of the current round to the end of the game
-#   - Baseline = 25
+# Training labels:
+#   - Average popularity increase per round, from the end of the round the generator was used to the end of the game
+#   - Baseline = 25 (arbitrary, probably doesn't matter much)
 
 # General training conditions:
 #   - 5 different initial popularities
-#   - 5 players, 10 players, 20 players
-#   - 20 rounds, 30 rounds, 50 rounds
+#   - 5 players, 10 players, 15 players
+#   - 20 rounds, 30 rounds, 40 rounds
 #   - 0 cats, 1 cat
 #   - 30 epochs
 
@@ -34,8 +33,8 @@ from typing import List
 
 # Generator training conditions:
 #   - Basic bandit with epsilon = 0.1, decay = 0.99
-#   - Agent that randomly selects generators - uniform
-#   - Agent that randomly selects generators - based on how long it's been since last used (more recent is more likely)
+#   - Agent that randomly selects generators - uniform (IGNORE FOR NOW)
+#   - Agent that randomly selects generators - based on how long it's been since last used (more recent is more likely) (IGNORE FOR NOW)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -48,7 +47,7 @@ from typing import List
 
 # Simple bandit agent that periodically explores and exploits otherwise
 class BasicBandit(AbstractAgent):
-    def __init__(self, epsilon: float, epsilon_decay: float, check_assumptions: bool = False) -> None:
+    def __init__(self, epsilon: float = 0.1, epsilon_decay: float = 0.99, check_assumptions: bool = False) -> None:
         super().__init__()
         self.whoami = 'BasicBandit'
         self.epsilon, self.epsilon_decay = epsilon, epsilon_decay
@@ -144,6 +143,7 @@ class UniformSelector(AbstractAgent):
         return generator_to_token_allocs[self.generator_to_use_idx]
 
 
+# Agent that favors generators that have been used more recently
 class FavorMoreRecent(AbstractAgent):
     def __init__(self, check_assumptions: bool = False) -> None:
         super().__init__()
@@ -223,7 +223,7 @@ def random_agents(max_players: int = 20) -> List[AbstractAgent]:
     return [RandomAgent() for _ in range(max_players)]
 
 
-def basic_bandits(epsilon: float, epsilon_decay: float, max_players: int = 20) -> List[AbstractAgent]:
+def basic_bandits(epsilon: float = 0.1, epsilon_decay: float = 0.99, max_players: int = 20) -> List[AbstractAgent]:
     return [BasicBandit(epsilon, epsilon_decay) for _ in range(max_players)]
 
 
@@ -234,7 +234,7 @@ def random_mixture_of_all_types(max_players: int = 20) -> List[AbstractAgent]:
     agents.extend(random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/', max_players))
     agents.extend(random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', max_players))
     agents.extend(random_agents(max_players))
-    agents.extend(basic_bandits(0.1, 0.99, max_players))
+    agents.extend(basic_bandits(max_players=max_players))
 
     np.random.shuffle(agents)
 
@@ -263,16 +263,14 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-N_EPOCHS = 1
+N_EPOCHS = 30
 INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
-N_PLAYERS = [5, 10, 20]
-N_ROUNDS = [20, 30, 50]
+N_PLAYERS = [5, 10, 15]
+N_ROUNDS = [20, 30, 40]
 N_CATS = [0, 1]
 BASELINE = 25
 
-n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS) * 7 * 3
-progress_percentage_chunk = int(0.01 * n_training_iterations)
-curr_iteration = 0
+n_training_iterations, progress_percentage_chunk, curr_iteration = None, None, 0  # Variables to track progress
 
 # Reset any existing training files (opening a file in write mode will truncate it)
 for file in os.listdir('../aat/training_data/'):
@@ -298,15 +296,20 @@ for epoch in range(N_EPOCHS):
                     list_of_opponents.append(
                         random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', n_other_players))
                     list_of_opponents.append(random_agents(n_other_players))
-                    list_of_opponents.append(basic_bandits(0.1, 0.99, n_other_players))
+                    list_of_opponents.append(basic_bandits(max_players=n_other_players))
                     list_of_opponents.append(random_mixture_of_all_types(n_other_players))
 
                     for opponents in list_of_opponents:
                         # Create different agents to train on
                         agents_to_train_on = []
-                        agents_to_train_on.append(BasicBandit(0.1, 0.99, check_assumptions=True))
-                        agents_to_train_on.append(UniformSelector(check_assumptions=True))
-                        agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
+                        agents_to_train_on.append(BasicBandit(check_assumptions=True))
+                        # agents_to_train_on.append(UniformSelector(check_assumptions=True))
+                        # agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
+
+                        if n_training_iterations is None:
+                            n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(
+                                N_ROUNDS) * len(N_CATS) * len(list_of_opponents) * len(agents_to_train_on)
+                            progress_percentage_chunk = int(0.05 * n_training_iterations)
 
                         for agent_to_train_on in agents_to_train_on:
                             # Create cats (if any)
