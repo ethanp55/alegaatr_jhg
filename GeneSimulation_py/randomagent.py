@@ -14,7 +14,7 @@ class RandomAgent(AbstractAgent):
     def setGameParams(self, gameParams, visualTraits):
         self.gameParams = gameParams
 
-    def play_round(self, player_idx, round_num, recieved, popularities, influence, extra_data, v):
+    def play_round(self, player_idx, round_num, recieved, popularities, influence, extra_data, v, transactions):
         tkns = len(popularities) * 2
         tax_tkns = 0
         random_vec = np.random.uniform(-1, 1, size=recieved.shape)

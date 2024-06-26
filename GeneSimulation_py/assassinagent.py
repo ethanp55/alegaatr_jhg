@@ -17,7 +17,7 @@ class AssassinAgent(AbstractAgent):
         self.gameParams = gameParams
         self.force_random = _forcedRandom
 
-    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v):
+    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, transactions):
         num_players = len(popularities)
         num_tokens = num_players * 2
         allocations = np.zeros(len(popularities), dtype=int)

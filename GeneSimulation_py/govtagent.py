@@ -16,7 +16,7 @@ class DummyGovtAgent(AbstractAgent):
         taxes = self.tax_rate * tkns
         return taxes
 
-    def play_round(self, player_idx, round_num, recieved, popularities, influence, extra_data, v):
+    def play_round(self, player_idx, round_num, recieved, popularities, influence, extra_data, v, transactions):
         allocations = np.zeros(len(popularities), dtype=int)
         allocations[player_idx] = len(popularities) * 2
         return allocations

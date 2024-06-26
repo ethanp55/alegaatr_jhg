@@ -1,10 +1,12 @@
 from copy import deepcopy
+from functools import partial
 from GeneSimulation_py.assassinagent import AssassinAgent
 from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
 from GeneSimulation_py.geneagent3 import GeneAgent3
 from GeneSimulation_py.main import run_with_specified_agents
 from GeneSimulation_py.randomagent import RandomAgent
+from multiprocessing import Pool
 import numpy as np
 import os
 import pandas as pd
@@ -20,21 +22,21 @@ from typing import List
 #   - 5 players, 10 players, 15 players
 #   - 20 rounds, 30 rounds, 40 rounds
 #   - 0 cats, 1 cat
-#   - 30 epochs
+#   - 30 epochs (TRY 15 FOR NOW)
 
 # Opponents:
 #   - CABs with randomly-selected parameters
 #   - Random selection of best CABs when trained with no cats
 #   - Random selection of best CABs when trained with 1 cat
 #   - Random selection of best CABs when trained with 2 cats
-#   - Random agents
+#   - Random agents (IGNORE FOR NOW)
 #   - Basic bandits with epsilon = 0.1, decay = 0.99
 #   - Random mixture of all of the above
 
 # Generator training conditions:
 #   - Basic bandit with epsilon = 0.1, decay = 0.99
-#   - Agent that randomly selects generators - uniform (IGNORE FOR NOW)
-#   - Agent that randomly selects generators - based on how long it's been since last used (more recent is more likely) (IGNORE FOR NOW)
+#   - Agent that randomly selects generators - uniform
+#   - Agent that randomly selects generators - based on how long it's been since last used (more recent is more likely)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -63,13 +65,13 @@ class BasicBandit(AbstractAgent):
             generator.setGameParams(game_params, forced_random)
 
     def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                             influence: np.array, extra_data, v: np.array) -> None:
+                             influence: np.array, extra_data, v: np.array, transactions: np.array) -> None:
         if self.check_assumptions:
             self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
-                                          self.generator_to_use_idx, BASELINE)
+                                          transactions, self.generator_to_use_idx, BASELINE)
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                   influence: np.array, extra_data, v: np.array) -> np.array:
+                   influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
         curr_popularity = popularities[player_idx]
 
         # Update empirical rewards
@@ -81,7 +83,8 @@ class BasicBandit(AbstractAgent):
 
         # Get the actions of every generator
         generator_to_token_allocs = self.generator_pool.play_round(player_idx, round_num, received, popularities,
-                                                                   influence, extra_data, v, self.generator_to_use_idx)
+                                                                   influence, extra_data, v, transactions,
+                                                                   self.generator_to_use_idx)
         # Explore
         if np.random.rand() < self.epsilon:
             self.generator_to_use_idx = np.random.choice(self.generator_indices)
@@ -126,16 +129,17 @@ class UniformSelector(AbstractAgent):
             generator.setGameParams(game_params, forced_random)
 
     def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                             influence: np.array, extra_data, v: np.array) -> None:
+                             influence: np.array, extra_data, v: np.array, transactions: np.array) -> None:
         if self.check_assumptions:
             self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
-                                          self.generator_to_use_idx, BASELINE)
+                                          transactions, self.generator_to_use_idx, BASELINE)
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                   influence: np.array, extra_data, v: np.array) -> np.array:
+                   influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
         # Get the actions of every generator
         generator_to_token_allocs = self.generator_pool.play_round(player_idx, round_num, received, popularities,
-                                                                   influence, extra_data, v, self.generator_to_use_idx)
+                                                                   influence, extra_data, v, transactions,
+                                                                   self.generator_to_use_idx)
 
         # Randomly (uniform) choose a generator to use
         self.generator_to_use_idx = np.random.choice(self.generator_indices)
@@ -161,16 +165,17 @@ class FavorMoreRecent(AbstractAgent):
             generator.setGameParams(game_params, forced_random)
 
     def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                             influence: np.array, extra_data, v: np.array) -> None:
+                             influence: np.array, extra_data, v: np.array, transactions: np.array) -> None:
         if self.check_assumptions:
             self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
-                                          self.generator_to_use_idx, BASELINE)
+                                          transactions, self.generator_to_use_idx, BASELINE)
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                   influence: np.array, extra_data, v: np.array) -> np.array:
+                   influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
         # Get the actions of every generator
         generator_to_token_allocs = self.generator_pool.play_round(player_idx, round_num, received, popularities,
-                                                                   influence, extra_data, v, self.generator_to_use_idx)
+                                                                   influence, extra_data, v, transactions,
+                                                                   self.generator_to_use_idx)
 
         # Randomly choose a generator, but favor those that have been used most recently
         rounds_since_used = [1 / self.n_rounds_since_last_use.get(i, 1) for i in self.generator_indices]
@@ -263,65 +268,72 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-N_EPOCHS = 30
+N_EPOCHS = 15
 INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [20, 30, 40]
 N_CATS = [0, 1]
 BASELINE = 25
 
-n_training_iterations, progress_percentage_chunk, curr_iteration = None, None, 0  # Variables to track progress
 
-# Reset any existing training files (opening a file in write mode will truncate it)
-for file in os.listdir('../aat/training_data/'):
-    with open(f'../aat/training_data/{file}', 'w', newline='') as f:
-        pass
+def train_generators():
+    # Variables to track progress
+    n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS)
+    progress_percentage_chunk = int(0.02 * n_training_iterations)
+    curr_iteration = 0
+    print(n_training_iterations, progress_percentage_chunk)
 
-# Run the training process
-for epoch in range(N_EPOCHS):
-    print(f'Epoch {epoch + 1}')
+    # Reset any existing training files (opening a file in write mode will truncate it)
+    for file in os.listdir('../aat/training_data/'):
+        with open(f'../aat/training_data/{file}', 'w', newline='') as f:
+            pass
 
-    for initial_pop_condition in INITIAL_POP_CONDITIONS:
-        for n_players in N_PLAYERS:
-            for n_rounds in N_ROUNDS:
-                for n_cats in N_CATS:
-                    # Create players, aside from main agent to train on and any cats
-                    n_other_players = n_players - 1 - n_cats
-                    list_of_opponents = []
-                    list_of_opponents.append(cabs_with_random_params(n_other_players))
-                    list_of_opponents.append(
-                        random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/', n_other_players))
-                    list_of_opponents.append(
-                        random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/', n_other_players))
-                    list_of_opponents.append(
-                        random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', n_other_players))
-                    list_of_opponents.append(random_agents(n_other_players))
-                    list_of_opponents.append(basic_bandits(max_players=n_other_players))
-                    list_of_opponents.append(random_mixture_of_all_types(n_other_players))
+    # Run the training process
+    for epoch in range(N_EPOCHS):
+        print(f'Epoch {epoch + 1}')
 
-                    for opponents in list_of_opponents:
-                        # Create different agents to train on
-                        agents_to_train_on = []
-                        agents_to_train_on.append(BasicBandit(check_assumptions=True))
-                        # agents_to_train_on.append(UniformSelector(check_assumptions=True))
-                        # agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
+        for initial_pop_condition in INITIAL_POP_CONDITIONS:
+            for n_players in N_PLAYERS:
+                for n_rounds in N_ROUNDS:
+                    for n_cats in N_CATS:
+                        if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
+                            print(f'{100 * (curr_iteration / n_training_iterations)}%')
+                        list_of_players = []
 
-                        if n_training_iterations is None:
-                            n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(
-                                N_ROUNDS) * len(N_CATS) * len(list_of_opponents) * len(agents_to_train_on)
-                            progress_percentage_chunk = int(0.05 * n_training_iterations)
-                            print(n_training_iterations, progress_percentage_chunk)
+                        # Create players, aside from main agent to train on and any cats
+                        n_other_players = n_players - 1 - n_cats
+                        list_of_opponents = []
+                        list_of_opponents.append(cabs_with_random_params(n_other_players))
+                        list_of_opponents.append(
+                            random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/', n_other_players))
+                        list_of_opponents.append(
+                            random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/', n_other_players))
+                        list_of_opponents.append(
+                            random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', n_other_players))
+                        # list_of_opponents.append(random_agents(n_other_players))
+                        list_of_opponents.append(basic_bandits(max_players=n_other_players))
+                        list_of_opponents.append(random_mixture_of_all_types(n_other_players))
 
-                        for agent_to_train_on in agents_to_train_on:
-                            # Create cats (if any)
-                            cats = [AssassinAgent() for _ in range(n_cats)]
-                            players = create_society(agent_to_train_on, cats, deepcopy(opponents), n_players)
+                        for opponents in list_of_opponents:
+                            # Create different agents to train on
+                            agents_to_train_on = []
+                            agents_to_train_on.append(BasicBandit(check_assumptions=True))
+                            agents_to_train_on.append(UniformSelector(check_assumptions=True))
+                            agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
 
-                            # Play the game
-                            run_with_specified_agents(players, initial_pop_setting=initial_pop_condition,
-                                                      numRounds=n_rounds)
+                            for agent_to_train_on in agents_to_train_on:
+                                # Create cats (if any)
+                                cats = [AssassinAgent() for _ in range(n_cats)]
+                                players = create_society(agent_to_train_on, cats, deepcopy(opponents), n_players)
+                                list_of_players.append(players)
 
-                            curr_iteration += 1
+                        # Spin off a process for each grouping of players and play the game
+                        pool = Pool(processes=len(list_of_players))
+                        pool.map(partial(run_with_specified_agents, initial_pop_setting=initial_pop_condition,
+                                         numRounds=n_rounds), list_of_players)
 
-                            if curr_iteration % progress_percentage_chunk == 0:
-                                print(f'{int(100 * (curr_iteration / n_training_iterations))}% done')
+                        curr_iteration += 1
+
+
+if __name__ == "__main__":
+    train_generators()

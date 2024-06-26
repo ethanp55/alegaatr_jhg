@@ -135,7 +135,8 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
                 sim.get_popularity(),
                 sim.get_influence(),
                 sim.get_extra_data(i),
-                sim.get_v()
+                sim.get_v(),
+                sim.get_transaction()[i, :]
             )
 
         # print("transactions:")
@@ -172,7 +173,8 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
             sim.get_popularity(),
             sim.get_influence(),
             sim.get_extra_data(i),
-            sim.get_v()
+            sim.get_v(),
+            sim.get_transaction()[i, :]
         )
 
     # if hasGovment == True:

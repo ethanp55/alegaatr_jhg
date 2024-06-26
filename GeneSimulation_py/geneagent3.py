@@ -289,7 +289,11 @@ class GeneAgent3(AbstractAgent):
 
         return theStr
 
-    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, was_just_used=False):
+    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, transactions,
+                   was_just_used=False):
+        if round_num > 0:
+            self.prev_allocations = transactions
+
         self.run_modularity_checker = True
 
         self.printT(player_idx, str(received))
@@ -456,7 +460,7 @@ class GeneAgent3(AbstractAgent):
                                       self.prev_tokens_kept)
 
         self.prev_popularities = popularities
-        self.prev_allocations = transaction_vec
+        # self.prev_allocations = transaction_vec
         self.prev_influence = influence
 
         self.updateIndebtedness(round_num, player_idx, transaction_vec, popularities)
@@ -466,8 +470,6 @@ class GeneAgent3(AbstractAgent):
 
         if transaction_vec[player_idx] < 0:
             print(str(player_idx) + " is stealing from self!!!")
-
-        assumptions = self.assumptions()
 
         return transaction_vec
 

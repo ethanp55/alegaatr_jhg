@@ -18,7 +18,7 @@ class HumanAgent(AbstractAgent):
     def setGameParams(self, gameParams, _forcedRandom):
         self.gameParams = gameParams
 
-    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v):
+    def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, transactions):
         numPlayers = len(received)
 
         while True:

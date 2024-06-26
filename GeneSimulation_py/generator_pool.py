@@ -1,4 +1,5 @@
 import csv
+import fcntl
 from GeneSimulation_py.geneagent3 import GeneAgent3
 import numpy as np
 import pandas as pd
@@ -21,7 +22,7 @@ class GeneratorPool:
         self.pop_history = []
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                   influence: np.array, extra_data, v: np.array,
+                   influence: np.array, extra_data, v: np.array, transactions: np.array,
                    generator_just_used_idx: Optional[int]) -> Dict[int, np.array]:
         self.pop_history.append(popularities)
         generator_to_token_allocs, generator_just_used = {}, None
@@ -40,7 +41,8 @@ class GeneratorPool:
             generator_to_token_allocs[generator_just_used_idx] = generator_just_used.play_round(player_idx, round_num,
                                                                                                 received, popularities,
                                                                                                 influence, extra_data,
-                                                                                                v, was_just_used=True)
+                                                                                                v, transactions,
+                                                                                                was_just_used=True)
 
         # For the other generators, set certain assumption parameters to those of the generator that was just used
         for i, generator in enumerate(self.generators):
@@ -55,15 +57,15 @@ class GeneratorPool:
                 generator.prev_tokens_kept = generator_just_used.prev_tokens_kept
 
             generator_to_token_allocs[i] = generator.play_round(player_idx, round_num, received, popularities,
-                                                                influence, extra_data, v)
+                                                                influence, extra_data, v, transactions)
 
         return generator_to_token_allocs
 
     def train_aat(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
-                  influence: np.array, extra_data, v: np.array,
+                  influence: np.array, extra_data, v: np.array, transactions: np.array,
                   generator_just_used_idx: Optional[int], baseline_increase: float) -> None:
         # Calculate assumption estimates for final round
-        self.play_round(player_idx, round_num, received, popularities, influence, extra_data, v,
+        self.play_round(player_idx, round_num, received, popularities, influence, extra_data, v, transactions,
                         generator_just_used_idx)
 
         # Store the training data
@@ -79,11 +81,15 @@ class GeneratorPool:
                 # Store the alignment vector
                 file_path = f'../aat/training_data/generator_{generator_idx}_vectors.csv'
                 with open(file_path, 'a', newline='') as file:
+                    fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
                     writer = csv.writer(file)
                     writer.writerow(alignment_vector)
+                    fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
 
                 # Store the correction term
                 file_path = f'../aat/training_data/generator_{generator_idx}_correction_terms.csv'
                 with open(file_path, 'a', newline='') as file:
+                    fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
                     writer = csv.writer(file)
                     writer.writerow([correction_term])
+                    fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
