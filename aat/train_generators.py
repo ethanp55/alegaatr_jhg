@@ -18,18 +18,18 @@ from typing import List
 #   - Baseline = 25 (arbitrary, probably doesn't matter much)
 
 # General training conditions:
-#   - 5 different initial popularities
+#   - 5 different initial popularities (JUST DO EQUAL AND RANDOM FOR NOW)
 #   - 5 players, 10 players, 15 players
 #   - 20 rounds, 30 rounds, 40 rounds
 #   - 0 cats, 1 cat
-#   - 30 epochs (TRY 15 FOR NOW)
+#   - 30 epochs (TRY 10 FOR NOW)
 
 # Opponents:
 #   - CABs with randomly-selected parameters
 #   - Random selection of best CABs when trained with no cats
 #   - Random selection of best CABs when trained with 1 cat
 #   - Random selection of best CABs when trained with 2 cats
-#   - Random agents (IGNORE FOR NOW)
+#   - Random agents
 #   - Basic bandits with epsilon = 0.1, decay = 0.99
 #   - Random mixture of all of the above
 
@@ -268,8 +268,9 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-N_EPOCHS = 15
-INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
+N_EPOCHS = 10
+# INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
+INITIAL_POP_CONDITIONS = ['equal', 'random']
 N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [20, 30, 40]
 N_CATS = [0, 1]
@@ -310,7 +311,7 @@ def train_generators():
                             random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/', n_other_players))
                         list_of_opponents.append(
                             random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', n_other_players))
-                        # list_of_opponents.append(random_agents(n_other_players))
+                        list_of_opponents.append(random_agents(n_other_players))
                         list_of_opponents.append(basic_bandits(max_players=n_other_players))
                         list_of_opponents.append(random_mixture_of_all_types(n_other_players))
 
