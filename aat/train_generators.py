@@ -277,17 +277,17 @@ N_CATS = [0, 1]
 BASELINE = 25
 
 
-def train_generators():
+def train_generators() -> None:
     # Variables to track progress
     n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS)
     progress_percentage_chunk = int(0.02 * n_training_iterations)
     curr_iteration = 0
     print(n_training_iterations, progress_percentage_chunk)
 
-    # Reset any existing training files (opening a file in write mode will truncate it)
-    for file in os.listdir('../aat/training_data/'):
-        with open(f'../aat/training_data/{file}', 'w', newline='') as f:
-            pass
+    # # Reset any existing training files (opening a file in write mode will truncate it)
+    # for file in os.listdir('../aat/training_data/'):
+    #     with open(f'../aat/training_data/{file}', 'w', newline='') as _:
+    #         pass
 
     # Run the training process
     for epoch in range(N_EPOCHS):

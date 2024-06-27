@@ -25,10 +25,14 @@ class AlegAATr(AbstractAgent):
         folder = '../aat/knn_models/' if ml_model_type == 'knn' else '../aat/nn_models/'
 
         for file in os.listdir(folder):
-            generator_idx = file.split('_')[1]
+            generator_idx = int(file.split('_')[1])
             full_file_path = f'{folder}{file}'
-            map_to_add_to = self.scalers if 'scaler' in file else self.models
-            map_to_add_to[generator_idx] = pickle.load(open(full_file_path, 'rb'))
+
+            if 'scaler' in file:
+                self.scalers[generator_idx] = pickle.load(open(full_file_path, 'rb'))
+
+            else:
+                self.models[generator_idx] = pickle.load(open(full_file_path, 'rb'))
 
     def _initialize_empirical_data(self, lookback: int) -> None:
         for generator_idx in self.generator_indices:
@@ -42,6 +46,8 @@ class AlegAATr(AbstractAgent):
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
         curr_popularity = popularities[player_idx]
+
+        # print(player_idx)
 
         # Update empirical results
         if self.prev_popularity is not None:
@@ -62,7 +68,7 @@ class AlegAATr(AbstractAgent):
 
             # Use empirical results as the prediction
             if np.random.rand() < self.lmbda ** n_rounds_since_last_use and len(
-                    self.empirical_increases[generator_idx] > 0):
+                    self.empirical_increases[generator_idx]) > 0:
                 increases = self.empirical_increases[generator_idx]
                 # avg = (sum(increases) / len(increases)) if len(increases) > 0 else np.inf
                 avg = sum(increases) / len(increases)
@@ -71,9 +77,9 @@ class AlegAATr(AbstractAgent):
             # Otherwise, use AAT
             else:
                 generator_assumption_estimates = self.generator_pool.assumptions(generator_idx)
-                x = generator_assumption_estimates.alignment_vector()
+                x = np.array(generator_assumption_estimates.alignment_vector())
                 x_scaled = self.scalers[generator_idx].transform(x) if generator_idx in self.scalers else x
-                correction_term_pred = self.models[generator_idx].predict(x_scaled)
+                correction_term_pred = self.models[generator_idx].predict(x_scaled.reshape(1, -1))[0]
                 pred = BASELINE * correction_term_pred
 
             if pred > best_pred:
