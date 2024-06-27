@@ -26,23 +26,16 @@ for generator_idx, vectors in generator_to_alignment_vectors.items():
 # Train neural networks for each generator
 for generator_idx, x in generator_to_alignment_vectors.items():
     # Get training and validation data
-    y = generator_to_correction_terms[generator_idx].reshape(-1, 1)
-    training_data = np.hstack((x, y))
-    np.random.shuffle(training_data)
-    train_cutoff_index = int(len(training_data) * 0.75)
-    train_set, validation_set = training_data[:train_cutoff_index], training_data[train_cutoff_index:]
-    x_train, y_train, x_validation, y_validation = \
-        train_set[:, :-1], train_set[:, -1], validation_set[:, :-1], validation_set[:, -1]
+    y = generator_to_correction_terms[generator_idx]
 
     # Scale the input data
     scaler = StandardScaler()
-    x_train_scaled = scaler.fit_transform(x_train)
-    x_validation_scaled = scaler.transform(x_validation)
+    x_scaled = scaler.fit_transform(x)
 
     # Try different hyperparameters and pick the best set (cross validation with 5 folds)
     print(f'Training generator {generator_idx}')
-    print('X train shape: ' + str(x_train_scaled.shape))
-    print('Y train shape: ' + str(y_train.shape))
+    print('X train shape: ' + str(x_scaled.shape))
+    print('Y train shape: ' + str(y.shape))
     param_grid = {
         'hidden_layer_sizes': [(25, 50), (50, 100), (25, 25), (50, 50), (100, 100), (25, 50, 25), (100, 150, 100)],
         'activation': ['tanh', 'relu', 'logistic'],
@@ -50,14 +43,11 @@ for generator_idx, x in generator_to_alignment_vectors.items():
         'alpha': [0.0001, 0.05],
     }
     random_search = RandomizedSearchCV(MLPRegressor(), param_grid, cv=5, scoring='neg_mean_squared_error', n_iter=10)
-    random_search.fit(x_train_scaled, y_train)
+    random_search.fit(x_scaled, y)
     mlp = random_search.best_estimator_
     print(f'Best parameters: {random_search.best_params_}')
     print(f'Best MSE: {-random_search.best_score_}')
-    y_validation_pred = mlp.predict(x_validation_scaled)
-    print(f'Best validation MSE: {mean_squared_error(y_validation, y_validation_pred)}')
-    print(
-        f'Best validation R-squared: {r2_score(y_validation, y_validation_pred)}\n')
+    print(f'Best R-squared: {r2_score(y, mlp.predict(x_scaled))}\n')
 
     # Store the best model and the scaler
     with open(f'../aat/nn_models/generator_{generator_idx}_nn.pickle', 'wb') as f:
