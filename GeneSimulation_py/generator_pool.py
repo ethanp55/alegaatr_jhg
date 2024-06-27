@@ -1,3 +1,4 @@
+from aat.assumptions import Assumptions
 import csv
 import fcntl
 from GeneSimulation_py.geneagent3 import GeneAgent3
@@ -93,3 +94,6 @@ class GeneratorPool:
                     writer = csv.writer(file)
                     writer.writerow([correction_term])
                     fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
+
+    def assumptions(self, generator_idx: int) -> Assumptions:
+        return self.generators[generator_idx].assumptions()
