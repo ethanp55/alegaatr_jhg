@@ -3,6 +3,7 @@ import os
 import pickle
 from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import r2_score
 from sklearn.model_selection import cross_val_score
 
 # Read in the training data
@@ -37,11 +38,9 @@ for generator_idx, x in generator_to_alignment_vectors.items():
     k_values, cv_scores = range(1, int(len(x_reduced) ** 0.5) + 1), []
     for k in k_values:
         knn = KNeighborsRegressor(n_neighbors=k, weights='distance')
-        scores = cross_val_score(knn, x_reduced, y, cv=10)
+        scores = cross_val_score(knn, x_reduced, y, cv=5, scoring='neg_mean_squared_error')
         cv_scores.append(scores.mean())
     n_neighbors = k_values[np.argmax(cv_scores)]
-    print(f'Best R-squared: {cv_scores[np.argmax(cv_scores)]}')
-    print(f'N neighbors: {n_neighbors}\n')
 
     # Create and store the model
     knn = KNeighborsRegressor(n_neighbors=n_neighbors, weights='distance')
@@ -52,3 +51,8 @@ for generator_idx, x in generator_to_alignment_vectors.items():
 
     # with open(f'../aat/knn_models/generator_{generator_idx}_pca.pickle', 'wb') as f:
     #     pickle.dump(pca, f)
+
+    # Print metrics and best number of neighbors
+    print(f'Best MSE: {-cv_scores[np.argmax(cv_scores)]}')
+    print(f'Best R-squared: {r2_score(y, knn.predict(x_reduced))}')
+    print(f'N neighbors: {n_neighbors}\n')

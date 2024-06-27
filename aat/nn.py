@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import pickle
-from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
@@ -49,13 +49,15 @@ for generator_idx, x in generator_to_alignment_vectors.items():
         'solver': ['adam'],
         'alpha': [0.0001, 0.05],
     }
-    random_search = RandomizedSearchCV(MLPRegressor(), param_grid, cv=5, scoring='r2', n_iter=10)
+    random_search = RandomizedSearchCV(MLPRegressor(), param_grid, cv=5, scoring='neg_mean_squared_error', n_iter=10)
     random_search.fit(x_train_scaled, y_train)
     mlp = random_search.best_estimator_
     print(f'Best parameters: {random_search.best_params_}')
-    print(f'Best R-squared: {random_search.best_score_}')
+    print(f'Best MSE: {-random_search.best_score_}')
+    y_validation_pred = mlp.predict(x_validation_scaled)
+    print(f'Best validation MSE: {mean_squared_error(y_validation, y_validation_pred)}')
     print(
-        f'Best validation R-squared: {r2_score(y_validation, mlp.predict(x_validation_scaled))}\n')
+        f'Best validation R-squared: {r2_score(y_validation, y_validation_pred)}\n')
 
     # Store the best model and the scaler
     with open(f'../aat/nn_models/generator_{generator_idx}_nn.pickle', 'wb') as f:
