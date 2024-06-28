@@ -47,8 +47,6 @@ class AlegAATr(AbstractAgent):
                    influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
         curr_popularity = popularities[player_idx]
 
-        # print(player_idx)
-
         # Update empirical results
         if self.prev_popularity is not None:
             increase = curr_popularity - self.prev_popularity
@@ -70,16 +68,15 @@ class AlegAATr(AbstractAgent):
             if np.random.rand() < self.lmbda ** n_rounds_since_last_use and len(
                     self.empirical_increases[generator_idx]) > 0:
                 increases = self.empirical_increases[generator_idx]
-                # avg = (sum(increases) / len(increases)) if len(increases) > 0 else np.inf
                 avg = sum(increases) / len(increases)
                 pred = avg
 
             # Otherwise, use AAT
             else:
                 generator_assumption_estimates = self.generator_pool.assumptions(generator_idx)
-                x = np.array(generator_assumption_estimates.alignment_vector())
+                x = np.array(generator_assumption_estimates.alignment_vector()).reshape(1, -1)
                 x_scaled = self.scalers[generator_idx].transform(x) if generator_idx in self.scalers else x
-                correction_term_pred = self.models[generator_idx].predict(x_scaled.reshape(1, -1))[0]
+                correction_term_pred = self.models[generator_idx].predict(x_scaled)[0]
                 pred = BASELINE * correction_term_pred
 
             if pred > best_pred:

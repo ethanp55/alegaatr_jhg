@@ -2,7 +2,8 @@ import numpy as np
 import os
 from scipy.stats import percentileofscore
 
-agent_names = ['AlegAATr']
+# agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB']
+agent_names = ['AlegAATr', 'EEE', 'UCB']
 folder = '../simulations/results/'
 
 for agent_name in agent_names:
@@ -12,6 +13,7 @@ for agent_name in agent_names:
 
     for file in agent_files:
         data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
+        data = [data] if len(data.shape) == 1 else data
 
         for row in data:
             pop = row[-1]
@@ -26,4 +28,4 @@ for agent_name in agent_names:
     print(f'Num wins: {n_wins}')
     print(f'Win rate: {round(n_wins / n_simulations, 3)}')
     print(f'Average percentile: {sum(percentiles) / len(percentiles)}')
-    print(f'Average pop sum: {sum(pop_sums) / len(pop_sums)}')
+    print(f'Average pop sum: {sum(pop_sums) / len(pop_sums)}\n')
