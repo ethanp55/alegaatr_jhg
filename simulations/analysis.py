@@ -3,7 +3,7 @@ import os
 from scipy.stats import percentileofscore
 
 # agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB']
-agent_names = ['AlegAATr', 'EEE', 'UCB']
+agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB']
 folder = '../simulations/results/'
 
 for agent_name in agent_names:
