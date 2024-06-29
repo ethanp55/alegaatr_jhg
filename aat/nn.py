@@ -42,7 +42,7 @@ for generator_idx, x in generator_to_alignment_vectors.items():
         'solver': ['adam'],
         'alpha': [0.0001, 0.05],
     }
-    random_search = RandomizedSearchCV(MLPRegressor(), param_grid, cv=5, scoring='neg_mean_squared_error', n_iter=10)
+    random_search = RandomizedSearchCV(MLPRegressor(), param_grid, cv=3, scoring='neg_mean_squared_error', n_iter=5)
     random_search.fit(x_scaled, y)
     mlp = random_search.best_estimator_
     print(f'Best parameters: {random_search.best_params_}')

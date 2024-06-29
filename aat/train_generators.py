@@ -284,10 +284,10 @@ def train_generators() -> None:
     curr_iteration = 0
     print(n_training_iterations, progress_percentage_chunk)
 
-    # # Reset any existing training files (opening a file in write mode will truncate it)
-    # for file in os.listdir('../aat/training_data/'):
-    #     with open(f'../aat/training_data/{file}', 'w', newline='') as _:
-    #         pass
+    # Reset any existing training files (opening a file in write mode will truncate it)
+    for file in os.listdir('../aat/training_data/'):
+        with open(f'../aat/training_data/{file}', 'w', newline='') as _:
+            pass
 
     # Run the training process
     for epoch in range(N_EPOCHS):
@@ -318,7 +318,7 @@ def train_generators() -> None:
                         for opponents in list_of_opponents:
                             # Create different agents to train on
                             agents_to_train_on = []
-                            agents_to_train_on.append(BasicBandit(check_assumptions=True))
+                            # agents_to_train_on.append(BasicBandit(check_assumptions=True))
                             agents_to_train_on.append(UniformSelector(check_assumptions=True))
                             agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
 

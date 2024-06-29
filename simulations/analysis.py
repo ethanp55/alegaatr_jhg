@@ -8,7 +8,7 @@ folder = '../simulations/results/'
 
 for agent_name in agent_names:
     n_simulations, n_wins = 0, 0
-    percentiles, pop_sums = [], []
+    percentiles, pop_sums, pops = [], [], []
     agent_files = [file for file in os.listdir(folder) if agent_name in file]  # Only look at agent-specific files
 
     for file in agent_files:
@@ -17,6 +17,7 @@ for agent_name in agent_names:
 
         for row in data:
             pop = row[-1]
+            pops.append(pop)
             percentiles.append(percentileofscore(row, pop, kind='rank') / 100)
             pop_sums.append(sum(row))
             max_pop = row.max()
@@ -28,4 +29,5 @@ for agent_name in agent_names:
     print(f'Num wins: {n_wins}')
     print(f'Win rate: {round(n_wins / n_simulations, 3)}')
     print(f'Average percentile: {sum(percentiles) / len(percentiles)}')
-    print(f'Average pop sum: {sum(pop_sums) / len(pop_sums)}\n')
+    print(f'Average pop sum: {sum(pop_sums) / len(pop_sums)}')
+    print(f'Average pop: {sum(pops) / len(pops)}\n')

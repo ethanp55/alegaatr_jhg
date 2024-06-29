@@ -64,19 +64,30 @@ class GeneratorPool:
 
     def train_aat(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                   influence: np.array, extra_data, v: np.array, transactions: np.array,
-                  generator_just_used_idx: Optional[int], baseline_increase: float) -> None:
+                  generator_just_used_idx: Optional[int], baseline: float,
+                  discount_factor: float = 0.9) -> None:
         # Calculate assumption estimates for final round
         self.play_round(player_idx, round_num, received, popularities, influence, extra_data, v, transactions,
                         generator_just_used_idx)
+
+        discounted_rewards, running_sum = [0] * (len(self.pop_history) - 1), 0
+        for i in reversed(range(len(self.pop_history))):
+            if i == 0:
+                break
+            reward = self.pop_history[i][player_idx] - self.pop_history[i - 1][player_idx]
+            running_sum = reward + discount_factor * running_sum
+            discounted_rewards[i - 1] = running_sum
 
         # Store the training data
         for generator_idx, assumptions_history in self.generator_to_assumption_estimates.items():
             for assumption_estimates, round_num in assumptions_history:
                 assert round_num > 0
 
-                avg_increase = (self.pop_history[-1][player_idx] - self.pop_history[round_num - 1][player_idx]) / (
-                        len(self.pop_history) - round_num)
-                correction_term = avg_increase / baseline_increase
+                # avg_increase = (self.pop_history[-1][player_idx] - self.pop_history[round_num - 1][player_idx]) / (
+                #         len(self.pop_history) - round_num)
+                # correction_term = avg_increase / baseline
+                discounted_reward = discounted_rewards[round_num - 1]
+                correction_term = discounted_reward / baseline
                 alignment_vector = assumption_estimates.alignment_vector()
 
                 # Store the alignment vector
