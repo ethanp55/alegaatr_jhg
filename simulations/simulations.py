@@ -77,7 +77,7 @@ def simulations() -> None:
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
                             agents_to_test = []
-                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn'))
+                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='nn'))
                             # agents_to_test.append(EXP4())
                             # agents_to_test.append(EEE())
                             # agents_to_test.append(UCB())
