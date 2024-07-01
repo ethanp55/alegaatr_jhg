@@ -34,7 +34,7 @@ from typing import List
 #   - Random mixture of all of the above
 
 # Generator training conditions:
-#   - Basic bandit with epsilon = 0.1, decay = 0.99
+#   - Basic bandit with epsilon = 0.1, decay = 0.99 (IGNORE FOR NOW)
 #   - Agent that randomly selects generators - uniform
 #   - Agent that randomly selects generators - based on how long it's been since last used (more recent is more likely)
 
