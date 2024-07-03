@@ -65,7 +65,7 @@ class GeneratorPool:
     def train_aat(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                   influence: np.array, extra_data, v: np.array, transactions: np.array,
                   generator_just_used_idx: Optional[int], baseline: float,
-                  discount_factor: float = 0.9) -> None:
+                  discount_factor: float = 0.9, enhanced: bool = False) -> None:
         # Calculate assumption estimates for final round
         self.play_round(player_idx, round_num, received, popularities, influence, extra_data, v, transactions,
                         generator_just_used_idx)
@@ -91,7 +91,8 @@ class GeneratorPool:
                 alignment_vector = assumption_estimates.alignment_vector()
 
                 # Store the alignment vector
-                file_path = f'../aat/training_data/generator_{generator_idx}_vectors.csv'
+                adjustment = '_enh' if enhanced else ''
+                file_path = f'../aat/training_data/generator_{generator_idx}_vectors{adjustment}.csv'
                 with open(file_path, 'a', newline='') as file:
                     fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
                     writer = csv.writer(file)
@@ -99,7 +100,7 @@ class GeneratorPool:
                     fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
 
                 # Store the correction term
-                file_path = f'../aat/training_data/generator_{generator_idx}_correction_terms.csv'
+                file_path = f'../aat/training_data/generator_{generator_idx}_correction_terms{adjustment}.csv'
                 with open(file_path, 'a', newline='') as file:
                     fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
                     writer = csv.writer(file)

@@ -1,14 +1,15 @@
-from aat.train_generators import BASELINE
 from collections import deque
 from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
 import numpy as np
 import os
 import pickle
+from utils.utils import BASELINE
 
 
 class AlegAATr(AbstractAgent):
-    def __init__(self, lmbda: float = 0.95, ml_model_type: str = 'knn', lookback: int = 5) -> None:
+    def __init__(self, lmbda: float = 0.95, ml_model_type: str = 'knn', lookback: int = 5, train: bool = False,
+                 enhanced: bool = False) -> None:
         super().__init__()
         self.whoami = 'AlegAATr'
         self.lmbda = lmbda
@@ -16,15 +17,21 @@ class AlegAATr(AbstractAgent):
         self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
         self.generator_to_use_idx = None
         self.models, self.scalers = {}, {}
-        self._read_in_generator_models(ml_model_type)
+        self._read_in_generator_models(ml_model_type, enhanced)
         self.empirical_increases, self.n_rounds_since_used = {}, {}
         self._initialize_empirical_data(lookback)
         self.prev_popularity = None
+        self.train = train
 
-    def _read_in_generator_models(self, ml_model_type: str) -> None:
+    def _read_in_generator_models(self, ml_model_type: str, enhanced: bool) -> None:
         folder = '../aat/knn_models/' if ml_model_type == 'knn' else '../aat/nn_models/'
 
         for file in os.listdir(folder):
+            if (enhanced and '_enh' not in file) or (not enhanced and '_enh' in file):
+                continue
+
+            assert '_enh' in file  # TODO: remove this
+
             generator_idx = int(file.split('_')[1])
             full_file_path = f'{folder}{file}'
 
@@ -93,3 +100,9 @@ class AlegAATr(AbstractAgent):
                 self.n_rounds_since_used[generator_idx] += 1
 
         return generator_to_token_allocs[self.generator_to_use_idx]
+
+    def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
+                             influence: np.array, extra_data, v: np.array, transactions: np.array) -> None:
+        if self.train:
+            self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
+                                          transactions, self.generator_to_use_idx, BASELINE, enhanced=True)

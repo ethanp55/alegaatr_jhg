@@ -1,4 +1,6 @@
 import numpy as np
 
-foo = np.array([1, 2, 3, 4, 5])
-print(foo.shape)
+foo = f'{""}.csv'
+foo1 = 'aleg_2.csv'
+
+print(foo in foo1)

@@ -1,5 +1,6 @@
 from copy import deepcopy
 from functools import partial
+from GeneSimulation_py.alegaatr import AlegAATr
 from GeneSimulation_py.assassinagent import AssassinAgent
 from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
@@ -11,6 +12,7 @@ import numpy as np
 import os
 import pandas as pd
 from typing import List
+from utils.utils import BASELINE
 
 
 # Training labels:
@@ -274,7 +276,6 @@ INITIAL_POP_CONDITIONS = ['equal', 'random']
 N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [20, 30, 40]
 N_CATS = [0, 1]
-BASELINE = 25
 
 
 def train_generators() -> None:
@@ -284,10 +285,10 @@ def train_generators() -> None:
     curr_iteration = 0
     print(n_training_iterations, progress_percentage_chunk)
 
-    # Reset any existing training files (opening a file in write mode will truncate it)
-    for file in os.listdir('../aat/training_data/'):
-        with open(f'../aat/training_data/{file}', 'w', newline='') as _:
-            pass
+    # # Reset any existing training files (opening a file in write mode will truncate it)
+    # for file in os.listdir('../aat/training_data/'):
+    #     with open(f'../aat/training_data/{file}', 'w', newline='') as _:
+    #         pass
 
     # Run the training process
     for epoch in range(N_EPOCHS):
@@ -319,8 +320,9 @@ def train_generators() -> None:
                             # Create different agents to train on
                             agents_to_train_on = []
                             # agents_to_train_on.append(BasicBandit(check_assumptions=True))
-                            agents_to_train_on.append(UniformSelector(check_assumptions=True))
-                            agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
+                            # agents_to_train_on.append(UniformSelector(check_assumptions=True))
+                            # agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
+                            agents_to_train_on.append(AlegAATr(lmbda=0.0, ml_model_type='knn', train=True))
 
                             for agent_to_train_on in agents_to_train_on:
                                 # Create cats (if any)

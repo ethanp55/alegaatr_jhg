@@ -18,6 +18,7 @@ for agent_name in agent_names:
         for row in data:
             pop = row[-1]
             pops.append(pop)
+            percentile = percentileofscore(row, pop, kind='rank') / 100
             percentiles.append(percentileofscore(row, pop, kind='rank') / 100)
             pop_sums.append(sum(row))
             max_pop = row.max()

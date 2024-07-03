@@ -9,8 +9,13 @@ from sklearn.model_selection import cross_val_score
 # Read in the training data
 generator_to_alignment_vectors, generator_to_correction_terms = {}, {}
 training_data_folder = '../aat/training_data/'
+enhanced = True
+adjustment = '_enh' if enhanced else ''
 
 for file in os.listdir(training_data_folder):
+    if (enhanced and '_enh' not in file) or (not enhanced and '_enh' in file):
+        continue
+
     generator_idx = file.split('_')[1]
     data = np.genfromtxt(f'{training_data_folder}{file}', delimiter=',', skip_header=0)
     is_alignment_vectors = 'vectors' in file
@@ -46,7 +51,7 @@ for generator_idx, x in generator_to_alignment_vectors.items():
     knn = KNeighborsRegressor(n_neighbors=n_neighbors, weights='distance')
     knn.fit(x_reduced, y)
 
-    with open(f'../aat/knn_models/generator_{generator_idx}_knn.pickle', 'wb') as f:
+    with open(f'../aat/knn_models/generator_{generator_idx}_knn{adjustment}.pickle', 'wb') as f:
         pickle.dump(knn, f)
 
     # with open(f'../aat/knn_models/generator_{generator_idx}_pca.pickle', 'wb') as f:
