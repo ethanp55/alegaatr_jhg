@@ -3,13 +3,14 @@ import os
 from scipy.stats import percentileofscore
 
 # agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB']
-agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'DQN']
+agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'D-UCB', 'R-UCB', 'SW-UCB', 'DQN']
 folder = '../simulations/results/'
 
 for agent_name in agent_names:
     n_simulations, n_wins = 0, 0
     percentiles, pop_sums, pops = [], [], []
-    agent_files = [file for file in os.listdir(folder) if agent_name in file]  # Only look at agent-specific files
+    agent_files = [file for file in os.listdir(folder) if
+                   file[:len(agent_name)] == agent_name]  # Only look at agent-specific files
 
     for file in agent_files:
         data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
