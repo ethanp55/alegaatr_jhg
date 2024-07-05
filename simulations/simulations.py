@@ -41,11 +41,11 @@ def simulations() -> None:
     curr_iteration = 0
     print(n_iterations, progress_percentage_chunk)
 
-    # # Reset any existing simulation files (opening a file in write mode will truncate it)
-    # for file in os.listdir('../simulations/results/'):
-    #     if 'AlegAATr' in file:
-    #         with open(f'../simulations/results/{file}', 'w', newline='') as _:
-    #             pass
+    # Reset any existing simulation files (opening a file in write mode will truncate it)
+    for file in os.listdir('../simulations/results/'):
+        if 'AlegAATr' in file:
+            with open(f'../simulations/results/{file}', 'w', newline='') as _:
+                pass
 
     # Run the simulation process
     for epoch in range(N_EPOCHS):
@@ -81,13 +81,13 @@ def simulations() -> None:
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
                             agents_to_test = []
-                            # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
                             # agents_to_test.append(EXP4())
                             # agents_to_test.append(EEE())
                             # agents_to_test.append(UCB())
                             # agents_to_test.append(DUCB())
                             # agents_to_test.append(RUCB())
-                            agents_to_test.append(SWUCB())
+                            # agents_to_test.append(SWUCB())
                             # agents_to_test.append(BasicBandit())
                             # agents_to_test.append(UniformSelector())
                             # agents_to_test.append(FavorMoreRecent())

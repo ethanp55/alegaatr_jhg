@@ -2,7 +2,6 @@ import numpy as np
 import os
 from scipy.stats import percentileofscore
 
-# agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB']
 agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'D-UCB', 'R-UCB', 'SW-UCB', 'DQN']
 folder = '../simulations/results/'
 

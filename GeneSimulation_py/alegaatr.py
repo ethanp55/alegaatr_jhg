@@ -30,8 +30,6 @@ class AlegAATr(AbstractAgent):
             if (enhanced and '_enh' not in file) or (not enhanced and '_enh' in file):
                 continue
 
-            assert '_enh' in file  # TODO: remove this
-
             generator_idx = int(file.split('_')[1])
             full_file_path = f'{folder}{file}'
 
