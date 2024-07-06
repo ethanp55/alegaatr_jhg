@@ -27,11 +27,16 @@ def favor_more_recents(max_players: int = 20) -> List[AbstractAgent]:
     return [FavorMoreRecent() for _ in range(max_players)]
 
 
-N_EPOCHS = 2
+N_EPOCHS = 5
+# INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 INITIAL_POP_CONDITIONS = ['equal']
-N_PLAYERS = [5, 10, 15]
-N_ROUNDS = [20, 30, 40]
-N_CATS = [0, 1]
+# N_PLAYERS = [5, 10, 15, 20, 30]
+N_PLAYERS = [5, 10, 15, 20]
+# N_ROUNDS = [10, 20, 30, 40, 50]
+N_ROUNDS = [10, 20, 30, 40]
+N_CATS = [0, 1, 2]
+
+names = ['AlegAATr']
 
 
 def simulations() -> None:
@@ -43,7 +48,8 @@ def simulations() -> None:
 
     # Reset any existing simulation files (opening a file in write mode will truncate it)
     for file in os.listdir('../simulations/results/'):
-        if 'AlegAATr' in file:
+        name = file.split('_')[0]
+        if name in names:
             with open(f'../simulations/results/{file}', 'w', newline='') as _:
                 pass
 
