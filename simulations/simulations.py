@@ -36,7 +36,7 @@ N_PLAYERS = [5, 10, 15, 20]
 N_ROUNDS = [10, 20, 30, 40]
 N_CATS = [0, 1, 2]
 
-names = ['EXP4', 'UCB', 'EEE']
+names = ['D-UCB', 'R-UCB', 'SW-UCB']
 
 
 def simulations() -> None:
@@ -88,15 +88,12 @@ def simulations() -> None:
                             # Create different agents to test
                             agents_to_test = []
                             # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
-                            agents_to_test.append(EXP4())
-                            agents_to_test.append(EEE())
-                            agents_to_test.append(UCB())
-                            # agents_to_test.append(DUCB())
-                            # agents_to_test.append(RUCB())
-                            # agents_to_test.append(SWUCB())
-                            # agents_to_test.append(BasicBandit())
-                            # agents_to_test.append(UniformSelector())
-                            # agents_to_test.append(FavorMoreRecent())
+                            # agents_to_test.append(EXP4())
+                            # agents_to_test.append(EEE())
+                            # agents_to_test.append(UCB())
+                            agents_to_test.append(DUCB())
+                            agents_to_test.append(RUCB())
+                            agents_to_test.append(SWUCB())
                             # agents_to_test.append(DQNAgent(train_network=False))
 
                             for agent_to_test in agents_to_test:
