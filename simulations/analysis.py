@@ -1,6 +1,13 @@
 import numpy as np
 import os
-from scipy.stats import percentileofscore
+
+
+def _calculate_percentile(array, value):
+    sorted_array = np.sort(array)
+    rank = np.searchsorted(sorted_array, value, side='right')
+
+    return rank / len(array)
+
 
 agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'D-UCB', 'R-UCB', 'SW-UCB', 'DQN']
 folder = '../simulations/results/'
@@ -13,13 +20,12 @@ for agent_name in agent_names:
 
     for file in agent_files:
         data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
-        data = [data] if len(data.shape) == 1 else data
+        # data = [data] if len(data.shape) == 1 else data
 
         for row in data:
             pop = row[-1]
             pops.append(pop)
-            percentile = percentileofscore(row, pop, kind='rank') / 100
-            percentiles.append(percentileofscore(row, pop, kind='rank') / 100)
+            percentiles.append(_calculate_percentile(row, pop))
             pop_sums.append(sum(row))
             max_pop = row.max()
             n_wins += 1 if pop == max_pop else 0

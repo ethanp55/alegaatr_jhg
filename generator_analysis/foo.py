@@ -1,6 +1,6 @@
 import numpy as np
 
-foo = f'{""}.csv'
-foo1 = 'aleg_2.csv'
+foo = np.array([[]])
+foo2 = np.concatenate((foo, np.array([[1, 2, 3]])), axis=0)
 
-print(foo in foo1)
+print(foo2)

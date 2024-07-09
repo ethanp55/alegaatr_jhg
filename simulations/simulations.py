@@ -1,4 +1,4 @@
-from aat.train_generators import BasicBandit, FavorMoreRecent, UniformSelector
+from aat.train_generators import FavorMoreRecent, UniformSelector
 from aat.train_generators import cabs_with_random_params, random_selection_of_best_trained_cabs, random_agents, \
     basic_bandits, random_mixture_of_all_types, create_society
 from copy import deepcopy
@@ -36,7 +36,7 @@ N_PLAYERS = [5, 10, 15, 20]
 N_ROUNDS = [10, 20, 30, 40]
 N_CATS = [0, 1, 2]
 
-names = ['D-UCB', 'R-UCB', 'SW-UCB']
+names = ['DQN']
 
 
 def simulations() -> None:
@@ -91,10 +91,10 @@ def simulations() -> None:
                             # agents_to_test.append(EXP4())
                             # agents_to_test.append(EEE())
                             # agents_to_test.append(UCB())
-                            agents_to_test.append(DUCB())
-                            agents_to_test.append(RUCB())
-                            agents_to_test.append(SWUCB())
-                            # agents_to_test.append(DQNAgent(train_network=False))
+                            # agents_to_test.append(DUCB())
+                            # agents_to_test.append(RUCB())
+                            # agents_to_test.append(SWUCB())
+                            agents_to_test.append(DQNAgent(train_network=False))
 
                             for agent_to_test in agents_to_test:
                                 # Create cats (if any)
