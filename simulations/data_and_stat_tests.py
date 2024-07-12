@@ -88,6 +88,31 @@ if SAVE_DATA:
     )
     df.to_csv('../simulations/formatted_results.csv', index=False)
 
+
+# Effect sizes for final popularities (overall)
+def _cohens_d(group1, group2):
+    mean_diff = np.mean(group1) - np.mean(group2)
+    pooled_std = np.sqrt((np.std(group1, ddof=1) ** 2 + np.std(group2, ddof=1) ** 2) / 2)
+
+    return mean_diff / pooled_std
+
+
+overall_results = results['overall']
+alegaatr_final_pops, latex_df = overall_results['AlegAATr'], []
+
+for name, pops in overall_results.items():
+    if name == 'AlegAATr':
+        continue
+
+    d = _cohens_d(alegaatr_final_pops[:, -1], pops[:, -1])
+
+    # print(f'Cohen\'s d AlegAATr vs. {name}: {d}')
+    latex_df.append((f'AlegAATr vs. {name}', round(d, 3)))
+
+latex_df = pd.DataFrame(latex_df, columns=['Comparison', 'Effect Size'])
+# print(latex_df.to_latex(index=False))
+print(latex_df)
+
 # Run comparison tests
 for scenario_str, scenario_results in results.items():
     names, pop_sums, final_pops, percentiles, wins = [], [], [], [], []
