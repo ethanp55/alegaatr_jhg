@@ -22,6 +22,14 @@ pop_sums, final_pops, percentiles, wins = [], [], [], []
 
 for file in os.listdir(folder):
     agent_name = file.split('_')[0]
+    if 'generator' in agent_name:
+        # Don't save formatted results with the best generator
+        if SAVE_DATA:
+            continue
+        agent_name = agent_name + '_' + file.split('_')[1]
+        if agent_name != 'generator_10':
+            continue
+
     pop_condition = file.split('pop=')[1].split('_')[0]
     n_players = file.split('p=')[2].split('_')[0]
     n_rounds = file.split('r=')[1].split('_')[0]
