@@ -10,12 +10,14 @@ from GeneSimulation_py.dqn import DQNAgent
 from GeneSimulation_py.ducb import DUCB
 from GeneSimulation_py.eee import EEE
 from GeneSimulation_py.exp4 import EXP4
+from GeneSimulation_py.geneagent3 import GeneAgent3
 from GeneSimulation_py.main import run_with_specified_agents
 from GeneSimulation_py.rucb import RUCB
 from GeneSimulation_py.swucb import SWUCB
 from GeneSimulation_py.ucb import UCB
 from multiprocessing import Process
 import os
+import pandas as pd
 from typing import List
 
 
@@ -27,6 +29,21 @@ def favor_more_recents(max_players: int = 20) -> List[AbstractAgent]:
     return [FavorMoreRecent() for _ in range(max_players)]
 
 
+def generators() -> List[AbstractAgent]:
+    gens, generator_df = [], pd.read_csv(f'../ResultsSaved/generator_genes/genes.csv', header=None)
+
+    # Read in the genes for the generators
+    for i in range(len(generator_df)):
+        gene_str = generator_df.iloc[i, 0]
+        cab = GeneAgent3(gene_str, 1, check_assumptions=False)
+        cab.whoami = f'generator_{i}'
+        gens.append(cab)
+
+    assert len(gens) == 16
+
+    return gens
+
+
 N_EPOCHS = 5
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 INITIAL_POP_CONDITIONS = ['equal']
@@ -36,7 +53,7 @@ N_PLAYERS = [5, 10, 15, 20]
 N_ROUNDS = [10, 20, 30, 40]
 N_CATS = [0, 1, 2]
 
-names = ['DQN']
+names = []
 
 
 def simulations() -> None:
@@ -94,7 +111,8 @@ def simulations() -> None:
                             # agents_to_test.append(DUCB())
                             # agents_to_test.append(RUCB())
                             # agents_to_test.append(SWUCB())
-                            agents_to_test.append(DQNAgent(train_network=False))
+                            # agents_to_test.append(DQNAgent(train_network=False))
+                            agents_to_test.extend(generators())
 
                             for agent_to_test in agents_to_test:
                                 # Create cats (if any)

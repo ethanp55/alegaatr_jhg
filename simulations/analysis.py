@@ -9,18 +9,21 @@ def _calculate_percentile(array, value):
     return rank / len(array)
 
 
-agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'D-UCB', 'R-UCB', 'SW-UCB', 'DQN']
+# gen_names = [f'generator_{i}' for i in range(16)]
+gen_names = ['generator_10']
+# agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'D-UCB', 'R-UCB', 'SW-UCB', 'DQN'] + gen_names
+agent_names = ['AlegAATr'] + gen_names
 folder = '../simulations/results/'
 
 for agent_name in agent_names:
     n_simulations, n_wins = 0, 0
     percentiles, pop_sums, pops = [], [], []
-    agent_files = [file for file in os.listdir(folder) if
-                   file[:len(agent_name)] == agent_name]  # Only look at agent-specific files
+    agent_files = [file for file in os.listdir(folder) if file[:len(agent_name)] == agent_name and file[
+        len(agent_name)] == '_']  # Only look at agent-specific files
 
     for file in agent_files:
         data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
-        # data = [data] if len(data.shape) == 1 else data
+        data = [data] if len(data.shape) == 1 else data
 
         for row in data:
             pop = row[-1]
