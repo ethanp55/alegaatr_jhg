@@ -11,8 +11,7 @@ def _calculate_percentile(array, value):
 
 # gen_names = [f'generator_{i}' for i in range(16)]
 gen_names = ['generator_10']
-# agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'D-UCB', 'R-UCB', 'SW-UCB', 'DQN'] + gen_names
-agent_names = ['AlegAATr'] + gen_names
+agent_names = ['AlegAATr', 'EXP4', 'EEE', 'UCB', 'D-UCB', 'R-UCB', 'SW-UCB', 'DQN'] + gen_names
 folder = '../simulations/results/'
 
 for agent_name in agent_names:

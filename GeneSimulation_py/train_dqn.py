@@ -7,7 +7,8 @@ from GeneSimulation_py.dqn import DQNAgent
 from GeneSimulation_py.main import run_with_specified_agents
 
 # Variables to track progress
-n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS)
+N_EPOCHS_ADJ = N_EPOCHS * 10
+n_training_iterations = N_EPOCHS_ADJ * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS)
 progress_percentage_chunk = int(0.02 * n_training_iterations)
 curr_iteration = 0
 print(n_training_iterations, progress_percentage_chunk)
@@ -16,7 +17,7 @@ print(n_training_iterations, progress_percentage_chunk)
 dqn = DQNAgent(train_network=True)
 
 # Run the training process
-for epoch in range(N_EPOCHS):
+for epoch in range(N_EPOCHS_ADJ):
     print(f'Epoch {epoch + 1}')
 
     # Keep track of win rate

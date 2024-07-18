@@ -53,7 +53,7 @@ N_PLAYERS = [5, 10, 15, 20]
 N_ROUNDS = [10, 20, 30, 40]
 N_CATS = [0, 1, 2]
 
-names = []
+names = ['DQN']
 
 
 def simulations() -> None:
@@ -111,8 +111,8 @@ def simulations() -> None:
                             # agents_to_test.append(DUCB())
                             # agents_to_test.append(RUCB())
                             # agents_to_test.append(SWUCB())
-                            # agents_to_test.append(DQNAgent(train_network=False))
-                            agents_to_test.extend(generators())
+                            agents_to_test.append(DQNAgent(train_network=False))
+                            # agents_to_test.extend(generators())
 
                             for agent_to_test in agents_to_test:
                                 # Create cats (if any)

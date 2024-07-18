@@ -37,14 +37,6 @@ class DQN(keras.Model):
     def get_config(self):
         return {'state_dim': self.state_dim, 'action_dim': self.action_dim}
 
-    # def get_config(self):
-    #     config = super().get_config().copy()
-    #     config.update({
-    #         'state_dim': self.state_dim,
-    #         'action_dim': self.action_dim,
-    #     })
-    #     return config
-
     def call(self, state: np.array) -> tf.Tensor:
         x = self.dense1(state)
         x = self.dense2(x)
