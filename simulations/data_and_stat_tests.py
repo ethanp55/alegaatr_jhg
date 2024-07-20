@@ -16,8 +16,8 @@ def _calculate_percentile(array, value):
 
 
 results, folder = {}, '../simulations/results/'
-results['overall'] = {}
-names, pop_conditions, num_players, num_rounds, num_cats = [], [], [], [], []
+results['overall'], results['banditsociety'] = {}, {}
+names, pop_conditions, num_players, num_rounds, num_cats, opponent_types = [], [], [], [], [], []
 pop_sums, final_pops, percentiles, wins = [], [], [], []
 
 for file in os.listdir(folder):
@@ -34,6 +34,8 @@ for file in os.listdir(folder):
     n_players = file.split('p=')[2].split('_')[0]
     n_rounds = file.split('r=')[1].split('_')[0]
     n_cats = file.split('c=')[1].split('_')[0][0]
+    opp_type = file[len(agent_name) + 1:].split('_')[0]
+    opp_type = 'banditsociety' if opp_type == 'basicbandits' else opp_type
     data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
 
     if SAVE_DATA:
@@ -44,6 +46,7 @@ for file in os.listdir(folder):
             num_players.append(n_players)
             num_rounds.append(n_rounds)
             num_cats.append(n_cats)
+            opponent_types.append(opp_type)
 
             # Calculate and add the results
             agent_pop = row[-1]
@@ -78,6 +81,9 @@ for file in os.listdir(folder):
         (results[f'c={n_cats}'][agent_name], data)) if agent_name in results[f'c={n_cats}'] else data
     results['overall'][agent_name] = np.concatenate(
         (results['overall'][agent_name], data)) if agent_name in results['overall'] else data
+    if opp_type == 'banditsociety':
+        results['banditsociety'][agent_name] = np.concatenate((results['banditsociety'][agent_name], data)) \
+            if agent_name in results['banditsociety'] else data
 
 # Store in a csv file for analysis in Google Sheets (or MS Excel)
 if SAVE_DATA:
@@ -88,6 +94,7 @@ if SAVE_DATA:
             'n_players': num_players,
             'n_rounds': num_rounds,
             'n_cats': num_cats,
+            'opponent_type': opponent_types,
             'society_pop_sum': pop_sums,
             'agent_final_pop': final_pops,
             'agent_percentile': percentiles,

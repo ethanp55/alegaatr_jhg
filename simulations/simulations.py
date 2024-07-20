@@ -16,6 +16,7 @@ from GeneSimulation_py.rucb import RUCB
 from GeneSimulation_py.swucb import SWUCB
 from GeneSimulation_py.ucb import UCB
 from multiprocessing import Process
+import numpy as np
 import os
 import pandas as pd
 from typing import List
@@ -44,6 +45,22 @@ def generators() -> List[AbstractAgent]:
     return gens
 
 
+def society_of_bandits(max_players: int = 20) -> List[AbstractAgent]:
+    bandits = [AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True), EXP4(), EEE(), UCB(), DUCB(), RUCB(), SWUCB(),
+               DQNAgent(train_network=False)]
+    agents = []
+
+    for _ in range(max_players):
+        bandit = np.random.choice(bandits)
+        agents.append(deepcopy(bandit))
+
+    return agents
+
+
+def self_play(agent: AbstractAgent, max_players: int = 20) -> List[AbstractAgent]:
+    return [deepcopy(agent) for _ in range(max_players)]
+
+
 N_EPOCHS = 5
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 INITIAL_POP_CONDITIONS = ['equal']
@@ -53,7 +70,7 @@ N_PLAYERS = [5, 10, 15, 20]
 N_ROUNDS = [10, 20, 30, 40]
 N_CATS = [0, 1, 2]
 
-names = ['DQN']
+names = []
 
 
 def simulations() -> None:
@@ -85,21 +102,21 @@ def simulations() -> None:
                         # Create players, aside from main agent to test and any cats
                         n_other_players = n_players - 1 - n_cats
                         list_of_opponents = []
-                        list_of_opponents.append((cabs_with_random_params(n_other_players), 'cabsrandomparams'))
-                        list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/',
-                                                                                        n_other_players),
-                                                  'cabsnocat'))
-                        list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/',
-                                                                                        n_other_players),
-                                                  'cabsonecat'))
-                        list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/',
-                                                                                        n_other_players),
-                                                  'cabstwocats'))
-                        list_of_opponents.append((random_agents(n_other_players), 'randoms'))
-                        list_of_opponents.append((basic_bandits(max_players=n_other_players), 'basicbandits'))
-                        # list_of_opponents.append((uniform_selectors(n_other_players), 'uniformselectors'))
-                        # list_of_opponents.append((favor_more_recents(n_other_players), 'favormorerecents'))
-                        list_of_opponents.append((random_mixture_of_all_types(n_other_players), 'mixture'))
+                        # list_of_opponents.append((cabs_with_random_params(n_other_players), 'cabsrandomparams'))
+                        # list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/',
+                        #                                                                 n_other_players),
+                        #                           'cabsnocat'))
+                        # list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/',
+                        #                                                                 n_other_players),
+                        #                           'cabsonecat'))
+                        # list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/',
+                        #                                                                 n_other_players),
+                        #                           'cabstwocats'))
+                        # list_of_opponents.append((random_agents(n_other_players), 'randoms'))
+                        # list_of_opponents.append((basic_bandits(max_players=n_other_players), 'basicbandits'))
+                        # list_of_opponents.append((random_mixture_of_all_types(n_other_players), 'mixture'))
+                        list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
+                        # list_of_opponents.append(([], 'selfplay'))
 
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
@@ -117,7 +134,10 @@ def simulations() -> None:
                             for agent_to_test in agents_to_test:
                                 # Create cats (if any)
                                 cats = [AssassinAgent() for _ in range(n_cats)]
-                                players = create_society(agent_to_test, cats, deepcopy(opponents), n_players)
+                                opps = self_play(agent_to_test,
+                                                 n_other_players) if opponents_label == 'selfplay' else deepcopy(
+                                    opponents)
+                                players = create_society(agent_to_test, cats, opps, n_players)
                                 simulation_label = f'{agent_to_test.whoami}_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'
                                 partial_func = partial(run_with_specified_agents, players=players,
                                                        final_pops_file=f'../simulations/results/{simulation_label}.csv',
