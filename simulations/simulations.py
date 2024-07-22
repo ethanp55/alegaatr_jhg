@@ -115,8 +115,8 @@ def simulations() -> None:
                         # list_of_opponents.append((random_agents(n_other_players), 'randoms'))
                         # list_of_opponents.append((basic_bandits(max_players=n_other_players), 'basicbandits'))
                         # list_of_opponents.append((random_mixture_of_all_types(n_other_players), 'mixture'))
-                        list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
-                        # list_of_opponents.append(([], 'selfplay'))
+                        # list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
+                        list_of_opponents.append(([], 'selfplay'))
 
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
