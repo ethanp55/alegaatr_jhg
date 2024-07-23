@@ -2,8 +2,7 @@ import numpy as np
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
-from graphutils import colors, find_endpts
+from generator_analysis.graphutils import colors, find_endpts
 
 """
 

@@ -58,17 +58,23 @@ def society_of_bandits(max_players: int = 20) -> List[AbstractAgent]:
 
 
 def self_play(agent: AbstractAgent, max_players: int = 20) -> List[AbstractAgent]:
-    return [deepcopy(agent) for _ in range(max_players)]
+    agent_copies = [deepcopy(agent) for _ in range(max_players)]
+    if isinstance(agent, AlegAATr):
+        for copy in agent_copies:
+            copy.generator_usage_file = None
+    return agent_copies
 
 
-N_EPOCHS = 5
+# N_EPOCHS = 5
+N_EPOCHS = 1
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 INITIAL_POP_CONDITIONS = ['equal']
-# N_PLAYERS = [5, 10, 15, 20, 30]
-N_PLAYERS = [5, 10, 15, 20]
-# N_ROUNDS = [10, 20, 30, 40, 50]
-N_ROUNDS = [10, 20, 30, 40]
-N_CATS = [0, 1, 2]
+# N_PLAYERS = [5, 10, 15, 20]
+N_PLAYERS = [5, 10, 15]
+# N_ROUNDS = [10, 20, 30, 40]
+N_ROUNDS = [40]
+# N_CATS = [0, 1, 2]
+N_CATS = [0]
 
 names = []
 
@@ -95,8 +101,8 @@ def simulations() -> None:
             for n_players in N_PLAYERS:
                 for n_rounds in N_ROUNDS:
                     for n_cats in N_CATS:
-                        if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
-                            print(f'{100 * (curr_iteration / n_iterations)}%')
+                        # if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
+                        #     print(f'{100 * (curr_iteration / n_iterations)}%')
                         list_of_sims_to_run = []
 
                         # Create players, aside from main agent to test and any cats
@@ -121,14 +127,15 @@ def simulations() -> None:
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
                             agents_to_test = []
-                            # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
+                                                           generator_usage_file=f'../simulations/alegaatr_generator_usage/{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
                             # agents_to_test.append(EXP4())
                             # agents_to_test.append(EEE())
                             # agents_to_test.append(UCB())
                             # agents_to_test.append(DUCB())
                             # agents_to_test.append(RUCB())
                             # agents_to_test.append(SWUCB())
-                            agents_to_test.append(DQNAgent(train_network=False))
+                            # agents_to_test.append(DQNAgent(train_network=False))
                             # agents_to_test.extend(generators())
 
                             for agent_to_test in agents_to_test:
@@ -139,8 +146,11 @@ def simulations() -> None:
                                     opponents)
                                 players = create_society(agent_to_test, cats, opps, n_players)
                                 simulation_label = f'{agent_to_test.whoami}_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'
+                                # partial_func = partial(run_with_specified_agents, players=players,
+                                #                        final_pops_file=f'../simulations/results/{simulation_label}.csv',
+                                #                        initial_pop_setting=initial_pop_condition, numRounds=n_rounds)
                                 partial_func = partial(run_with_specified_agents, players=players,
-                                                       final_pops_file=f'../simulations/results/{simulation_label}.csv',
+                                                       folder_to_save_to=f'../simulations/stored_games_for_network_plots/{simulation_label}.csv',
                                                        initial_pop_setting=initial_pop_condition, numRounds=n_rounds)
                                 list_of_sims_to_run.append(partial_func)
 
@@ -156,6 +166,12 @@ def simulations() -> None:
                             process.join()  # Wait for every process to finish before continuing
 
                         curr_iteration += 1
+
+    # players = generators()
+    # simulation_label = 'generators_pop=equal_p=16_r=40_c=0'
+    # run_with_specified_agents(players=players,
+    #                           folder_to_save_to=f'../simulations/stored_games_for_network_plots/{simulation_label}.csv',
+    #                           numRounds=40)
 
 
 if __name__ == "__main__":

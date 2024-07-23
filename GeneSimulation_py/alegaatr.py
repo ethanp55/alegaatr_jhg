@@ -1,15 +1,17 @@
 from collections import deque
+import csv
 from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
 import numpy as np
 import os
 import pickle
+from typing import Optional
 from utils.utils import BASELINE
 
 
 class AlegAATr(AbstractAgent):
     def __init__(self, lmbda: float = 0.95, ml_model_type: str = 'knn', lookback: int = 5, train: bool = False,
-                 enhanced: bool = False) -> None:
+                 enhanced: bool = False, generator_usage_file: Optional[str] = None) -> None:
         super().__init__()
         self.whoami = 'AlegAATr'
         self.lmbda = lmbda
@@ -22,6 +24,11 @@ class AlegAATr(AbstractAgent):
         self._initialize_empirical_data(lookback)
         self.prev_popularity = None
         self.train = train
+        self.generator_usage_file = generator_usage_file
+        if self.generator_usage_file is not None:
+            with open(f'{self.generator_usage_file}.csv', 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(['round', 'generator'])
 
     def _read_in_generator_models(self, ml_model_type: str, enhanced: bool) -> None:
         folder = '../aat/knn_models/' if ml_model_type == 'knn' else '../aat/nn_models/'
@@ -43,6 +50,12 @@ class AlegAATr(AbstractAgent):
         for generator_idx in self.generator_indices:
             self.empirical_increases[generator_idx] = deque(maxlen=lookback)
             self.n_rounds_since_used[generator_idx] = 1
+
+    def _write_to_generator_usage_file(self, round_num: int) -> None:
+        assert self.generator_usage_file is not None
+        with open(f'{self.generator_usage_file}.csv', 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([round_num, self.generator_to_use_idx])
 
     def setGameParams(self, game_params, forced_random) -> None:
         for generator in self.generator_pool.generators:
@@ -87,7 +100,10 @@ class AlegAATr(AbstractAgent):
             if pred > best_pred:
                 best_pred, best_generator_idx = pred, generator_idx
 
+        prev_generator_idx = self.generator_to_use_idx
         self.generator_to_use_idx = best_generator_idx
+        if self.generator_to_use_idx != prev_generator_idx and self.generator_usage_file is not None:
+            self._write_to_generator_usage_file(round_num)
 
         # Update how many rounds it has been since each generator has been used
         for generator_idx in self.n_rounds_since_used.keys():
