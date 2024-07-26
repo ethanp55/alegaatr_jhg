@@ -17,7 +17,8 @@ def _calculate_percentile(array, value):
 
 results, folder = {}, '../simulations/results/'
 results['overall'], results['banditsociety'] = {}, {}
-names, pop_conditions, num_players, num_rounds, num_cats, opponent_types = [], [], [], [], [], []
+names, pop_conditions, num_players, num_rounds, num_cats, opponent_types, initial_pop_classes = \
+    [], [], [], [], [], [], []
 pop_sums, final_pops, percentiles, wins = [], [], [], []
 
 for file in os.listdir(folder):
@@ -54,6 +55,15 @@ for file in os.listdir(folder):
             final_pops.append(agent_pop)
             percentiles.append(_calculate_percentile(row, agent_pop))
             wins.append(1 if agent_pop == row.max() else 0)
+
+        if pop_condition == 'random':
+            initial_pop_classes_data = pd.read_csv(f'../simulations/initial_pops/{file}', header=None)
+
+            for _, row in initial_pop_classes_data.iterrows():
+                initial_pop_classes.append(row[0])
+
+        else:
+            initial_pop_classes.extend(['equal' for _ in range(len(data))])
 
     if f'pop={pop_condition}' not in results:
         results[f'pop={pop_condition}'] = {}
@@ -98,7 +108,8 @@ if SAVE_DATA:
             'society_pop_sum': pop_sums,
             'agent_final_pop': final_pops,
             'agent_percentile': percentiles,
-            'agent_won': wins
+            'agent_won': wins,
+            'initial_class': initial_pop_classes
         }
     )
     df.to_csv('../simulations/formatted_results.csv', index=False)

@@ -65,16 +65,16 @@ def self_play(agent: AbstractAgent, max_players: int = 20) -> List[AbstractAgent
     return agent_copies
 
 
-# N_EPOCHS = 5
-N_EPOCHS = 1
+N_EPOCHS = 5
+# N_EPOCHS = 1
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
-INITIAL_POP_CONDITIONS = ['equal']
-# N_PLAYERS = [5, 10, 15, 20]
-N_PLAYERS = [5, 10, 15]
-# N_ROUNDS = [10, 20, 30, 40]
-N_ROUNDS = [40]
-# N_CATS = [0, 1, 2]
-N_CATS = [0]
+INITIAL_POP_CONDITIONS = ['random']
+N_PLAYERS = [5, 10, 15, 20]
+# N_PLAYERS = [5, 10, 15]
+N_ROUNDS = [10, 20, 30, 40]
+# N_ROUNDS = [40]
+N_CATS = [0, 1, 2]
+# N_CATS = [0]
 
 names = []
 
@@ -101,41 +101,42 @@ def simulations() -> None:
             for n_players in N_PLAYERS:
                 for n_rounds in N_ROUNDS:
                     for n_cats in N_CATS:
-                        # if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
-                        #     print(f'{100 * (curr_iteration / n_iterations)}%')
+                        if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
+                            print(f'{100 * (curr_iteration / n_iterations)}%')
                         list_of_sims_to_run = []
 
                         # Create players, aside from main agent to test and any cats
                         n_other_players = n_players - 1 - n_cats
                         list_of_opponents = []
-                        # list_of_opponents.append((cabs_with_random_params(n_other_players), 'cabsrandomparams'))
-                        # list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/',
-                        #                                                                 n_other_players),
-                        #                           'cabsnocat'))
-                        # list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/',
-                        #                                                                 n_other_players),
-                        #                           'cabsonecat'))
-                        # list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/',
-                        #                                                                 n_other_players),
-                        #                           'cabstwocats'))
-                        # list_of_opponents.append((random_agents(n_other_players), 'randoms'))
-                        # list_of_opponents.append((basic_bandits(max_players=n_other_players), 'basicbandits'))
-                        # list_of_opponents.append((random_mixture_of_all_types(n_other_players), 'mixture'))
-                        # list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
-                        list_of_opponents.append(([], 'selfplay'))
+                        list_of_opponents.append((cabs_with_random_params(n_other_players), 'cabsrandomparams'))
+                        list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/',
+                                                                                        n_other_players),
+                                                  'cabsnocat'))
+                        list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/',
+                                                                                        n_other_players),
+                                                  'cabsonecat'))
+                        list_of_opponents.append((random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/',
+                                                                                        n_other_players),
+                                                  'cabstwocats'))
+                        list_of_opponents.append((random_agents(n_other_players), 'randoms'))
+                        list_of_opponents.append((basic_bandits(max_players=n_other_players), 'basicbandits'))
+                        list_of_opponents.append((random_mixture_of_all_types(n_other_players), 'mixture'))
+                        list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
+                        # list_of_opponents.append(([], 'selfplay'))
 
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
                             agents_to_test = []
-                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
-                                                           generator_usage_file=f'../simulations/alegaatr_generator_usage/{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
+                            # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+                            # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
+                            #                                generator_usage_file=f'../simulations/alegaatr_generator_usage/{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
                             # agents_to_test.append(EXP4())
                             # agents_to_test.append(EEE())
                             # agents_to_test.append(UCB())
                             # agents_to_test.append(DUCB())
                             # agents_to_test.append(RUCB())
                             # agents_to_test.append(SWUCB())
-                            # agents_to_test.append(DQNAgent(train_network=False))
+                            agents_to_test.append(DQNAgent(train_network=False))
                             # agents_to_test.extend(generators())
 
                             for agent_to_test in agents_to_test:
@@ -146,12 +147,13 @@ def simulations() -> None:
                                     opponents)
                                 players = create_society(agent_to_test, cats, opps, n_players)
                                 simulation_label = f'{agent_to_test.whoami}_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'
-                                # partial_func = partial(run_with_specified_agents, players=players,
-                                #                        final_pops_file=f'../simulations/results/{simulation_label}.csv',
-                                #                        initial_pop_setting=initial_pop_condition, numRounds=n_rounds)
                                 partial_func = partial(run_with_specified_agents, players=players,
-                                                       folder_to_save_to=f'../simulations/stored_games_for_network_plots/{simulation_label}.csv',
-                                                       initial_pop_setting=initial_pop_condition, numRounds=n_rounds)
+                                                       final_pops_file=f'../simulations/results/{simulation_label}.csv',
+                                                       initial_pop_setting=initial_pop_condition, numRounds=n_rounds,
+                                                       initial_pops_file=f'../simulations/initial_pops/{simulation_label}.csv')
+                                # partial_func = partial(run_with_specified_agents, players=players,
+                                #                        folder_to_save_to=f'../simulations/stored_games_for_network_plots/{simulation_label}.csv',
+                                #                        initial_pop_setting=initial_pop_condition, numRounds=n_rounds)
                                 list_of_sims_to_run.append(partial_func)
 
                         # Spin off a process for each grouping of players and play the game

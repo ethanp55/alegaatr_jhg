@@ -15,7 +15,7 @@ np.set_printoptions(precision=2, suppress=True)
 
 
 def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRandom, folder_to_save_to,
-              final_pops_file=None):
+              final_pops_file=None, initial_pops_file=None):
     # if hasGovment == True:
     #     tax_rate = 0.0
     #     gov_pop = 0.0       # base_pop * (num_players-1) * tax_rate
@@ -189,6 +189,21 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
             # f.write(f'{pops_str}\n')
             writer = csv.writer(f)
             writer.writerow(final_pops)
+
+    if initial_pops_file is not None:
+        def _calculate_percentile(array, value):
+            sorted_array = np.sort(array)
+            rank = np.searchsorted(sorted_array, value, side='right')
+
+            return rank / len(array)
+
+        initial_rank = _calculate_percentile(initial_pops, initial_pops[-1])
+        initial_class = 'poor' if initial_rank <= (1 / 3) else (
+            'middle' if (1 / 3) < initial_rank <= (2 / 3) else 'rich')
+
+        with open(initial_pops_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([initial_class])
 
     # if hasGovment == True:
     #     return sim.get_popularity()[1:], runningTotal / rounds
@@ -631,11 +646,11 @@ def define_initial_pops(init_pop, num_players):
 
 def run_with_specified_agents(players: List[AbstractAgent], folder_to_save_to: str = None, poverty_line: int = 0,
                               initial_pop_setting: str = 'equal', numRounds: int = 30,
-                              final_pops_file: str = None) -> np.array:
+                              final_pops_file: str = None, initial_pops_file: str = None) -> np.array:
     initial_pops = define_initial_pops(initial_pop_setting, len(players))
 
     result, avePop = play_game(players, numRounds, 1000, 1000, initial_pops, poverty_line, False,
-                               folder_to_save_to, final_pops_file)
+                               folder_to_save_to, final_pops_file, initial_pops_file)
     # print("endPop: " + str(result))
     # print("avePop: " + str(avePop))
     # print("relPop: " + str(avePop / sum(avePop)))
