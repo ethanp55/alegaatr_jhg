@@ -11,11 +11,11 @@ from utils.utils import BASELINE
 
 class AlegAATr(AbstractAgent):
     def __init__(self, lmbda: float = 0.95, ml_model_type: str = 'knn', lookback: int = 5, train: bool = False,
-                 enhanced: bool = False, generator_usage_file: Optional[str] = None) -> None:
+                 enhanced: bool = False, generator_usage_file: Optional[str] = None, auto_aat: bool = False) -> None:
         super().__init__()
         self.whoami = 'AlegAATr'
         self.lmbda = lmbda
-        self.generator_pool = GeneratorPool(check_assumptions=True)
+        self.generator_pool = GeneratorPool(check_assumptions=True, auto_aat=auto_aat)
         self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
         self.generator_to_use_idx = None
         self.models, self.scalers = {}, {}

@@ -270,11 +270,12 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-N_EPOCHS = 10
+N_EPOCHS = 5
 INITIAL_POP_CONDITIONS = ['equal', 'random']
 N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [20, 30, 40]
 N_CATS = [0, 1]
+AUTO_AAT = True
 
 
 def train_generators() -> None:
@@ -321,7 +322,8 @@ def train_generators() -> None:
                             # agents_to_train_on.append(BasicBandit(check_assumptions=True))
                             # agents_to_train_on.append(UniformSelector(check_assumptions=True))
                             # agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
-                            agents_to_train_on.append(AlegAATr(lmbda=0.0, ml_model_type='knn', train=True))
+                            agents_to_train_on.append(
+                                AlegAATr(lmbda=0.0, ml_model_type='knn', train=True, auto_aat=AUTO_AAT))
 
                             for agent_to_train_on in agents_to_train_on:
                                 # Create cats (if any)

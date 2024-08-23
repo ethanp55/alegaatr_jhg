@@ -8,8 +8,9 @@ from typing import Dict, Optional
 
 
 class GeneratorPool:
-    def __init__(self, only_use_half: bool = False, check_assumptions: bool = False) -> None:
+    def __init__(self, only_use_half: bool = False, check_assumptions: bool = False, auto_aat: bool = False) -> None:
         self.generator_to_assumption_estimates, self.check_assumptions = {}, check_assumptions
+        self.auto_aat = auto_aat
         self.generators, generator_df = [], pd.read_csv(f'../ResultsSaved/generator_genes/genes.csv', header=None)
 
         # Read in the genes for the generators
@@ -33,10 +34,18 @@ class GeneratorPool:
 
             # Grab the assumption estimates, if we're tracking them
             if self.check_assumptions:
+                if self.auto_aat:
+                    curr_state = np.concatenate(
+                        [influence.reshape(-1, 1), popularities.reshape(-1, 1), received.reshape(-1, 1)])
+                    n_padding = 300 - curr_state.shape[0]
+                    curr_state = np.concatenate([curr_state, np.full((n_padding, 1), -1e9)])
+                    tup = (generator_just_used.assumptions(), round_num, np.squeeze(curr_state))
+
+                else:
+                    tup = (generator_just_used.assumptions(), round_num, None)
                 self.generator_to_assumption_estimates[
                     generator_just_used_idx] = self.generator_to_assumption_estimates.get(generator_just_used_idx,
-                                                                                          []) + [
-                                                   (generator_just_used.assumptions(), round_num)]
+                                                                                          []) + [tup]
 
             # Have the generator that was just used run first
             generator_to_token_allocs[generator_just_used_idx] = generator_just_used.play_round(player_idx, round_num,
@@ -66,6 +75,12 @@ class GeneratorPool:
                   influence: np.array, extra_data, v: np.array, transactions: np.array,
                   generator_just_used_idx: Optional[int], baseline: float,
                   discount_factor: float = 0.9, enhanced: bool = False) -> None:
+        if self.auto_aat:
+            game_description = 'Repeated, multi-agent, collective-action, general-sum game where players attack or steal in order to build or destroy relationships'
+            generator_descriptions = {}
+            for generator_idx, generator in enumerate(self.generators):
+                generator_descriptions[generator_idx] = ', '.join(f'{k} is {v}' for k, v in generator.genes.items())
+
         # Calculate assumption estimates for final round
         self.play_round(player_idx, round_num, received, popularities, influence, extra_data, v, transactions,
                         generator_just_used_idx)
@@ -80,32 +95,64 @@ class GeneratorPool:
 
         # Store the training data
         for generator_idx, assumptions_history in self.generator_to_assumption_estimates.items():
-            for assumption_estimates, round_num in assumptions_history:
+            for assumption_estimates, round_num, game_state in assumptions_history:
                 assert round_num > 0
+                assert game_state is not None if self.auto_aat else None
 
-                # avg_increase = (self.pop_history[-1][player_idx] - self.pop_history[round_num - 1][player_idx]) / (
-                #         len(self.pop_history) - round_num)
-                # correction_term = avg_increase / baseline
                 discounted_reward = discounted_rewards[round_num - 1]
                 correction_term = discounted_reward / baseline
                 alignment_vector = assumption_estimates.alignment_vector()
 
-                # Store the alignment vector
-                adjustment = '_enh' if enhanced else ''
-                file_path = f'../aat/training_data/generator_{generator_idx}_vectors{adjustment}.csv'
-                with open(file_path, 'a', newline='') as file:
-                    fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
-                    writer = csv.writer(file)
-                    writer.writerow(alignment_vector)
-                    fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
+                if self.auto_aat:
+                    alignment_vector = np.array(alignment_vector).reshape(-1, 1)
+                    n_padding = 100 - alignment_vector.shape[0]
+                    alignment_vector = np.concatenate([alignment_vector, np.full((n_padding, 1), -1e9)])
+                    folder = f'../../auto_aat/train/training_data/jhg/generator_{generator_idx}'
 
-                # Store the correction term
-                file_path = f'../aat/training_data/generator_{generator_idx}_correction_terms{adjustment}.csv'
-                with open(file_path, 'a', newline='') as file:
-                    fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
-                    writer = csv.writer(file)
-                    writer.writerow([correction_term])
-                    fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
+                    with open(f'{folder}_s.csv', 'a', newline='') as file1, \
+                            open(f'{folder}_av.csv', 'a', newline='') as file2, \
+                            open(f'{folder}_gd.csv', 'a', newline='') as file3, \
+                            open(f'{folder}_ed.csv', 'a', newline='') as file4:
+                        # Lock the files (for write safety)
+                        fcntl.flock(file1.fileno(), fcntl.LOCK_EX)
+                        fcntl.flock(file2.fileno(), fcntl.LOCK_EX)
+                        fcntl.flock(file3.fileno(), fcntl.LOCK_EX)
+                        fcntl.flock(file4.fileno(), fcntl.LOCK_EX)
+
+                        # Write the data
+                        writer = csv.writer(file1)
+                        writer.writerow(game_state)
+                        writer = csv.writer(file2)
+                        writer.writerow(np.squeeze(alignment_vector))
+                        writer = csv.writer(file3)
+                        writer.writerow([generator_descriptions[generator_idx]])
+                        writer = csv.writer(file4)
+                        writer.writerow([game_description])
+
+                        # Unlock the files
+                        fcntl.flock(file1.fileno(), fcntl.LOCK_UN)
+                        fcntl.flock(file2.fileno(), fcntl.LOCK_UN)
+                        fcntl.flock(file3.fileno(), fcntl.LOCK_UN)
+                        fcntl.flock(file4.fileno(), fcntl.LOCK_UN)
+
+                else:
+                    # Store the alignment vector
+                    adjustment = '_enh' if enhanced else ''
+                    file_path = f'../aat/training_data/generator_{generator_idx}_vectors{adjustment}.csv'
+
+                    with open(file_path, 'a', newline='') as file:
+                        fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
+                        writer = csv.writer(file)
+                        writer.writerow(alignment_vector)
+                        fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
+
+                    # Store the correction term
+                    file_path = f'../aat/training_data/generator_{generator_idx}_correction_terms{adjustment}.csv'
+                    with open(file_path, 'a', newline='') as file:
+                        fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
+                        writer = csv.writer(file)
+                        writer.writerow([correction_term])
+                        fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
 
     def assumptions(self, generator_idx: int) -> Assumptions:
         return self.generators[generator_idx].assumptions()
