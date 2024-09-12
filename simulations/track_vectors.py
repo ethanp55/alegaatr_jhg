@@ -89,8 +89,8 @@ def simulations() -> None:
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
                             agents_to_test = []
-                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
-                                                           track_vector_file=f'../simulations/vectors/AlegAATr_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
+                            # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
+                            #                                track_vector_file=f'../simulations/vectors/AlegAATr_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
                             agents_to_test.append(DQNAgent(train_network=False,
                                                            track_vector_file=f'../simulations/vectors/DQN_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
 

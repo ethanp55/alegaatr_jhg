@@ -39,9 +39,12 @@ class DQN(keras.Model):
     def get_config(self):
         return {'state_dim': self.state_dim, 'action_dim': self.action_dim}
 
-    def call(self, state: np.array) -> tf.Tensor:
+    def call(self, state: np.array, return_transformed_state: bool = False) -> tf.Tensor:
         x = self.dense1(state)
         x = self.dense2(x)
+
+        if return_transformed_state:
+            return x
 
         return self.output_layer(x)
 
@@ -163,7 +166,8 @@ class DQNAgent(AbstractAgent):
             self.generator_to_use_idx = np.argmax(q_values.numpy())
 
             if self.track_vector_file is not None:
-                self._write_to_track_vectors_file(scaled_state)
+                network_state = self.model(np.expand_dims(scaled_state, 0), return_transformed_state=True)
+                self._write_to_track_vectors_file(network_state.numpy().reshape(-1, ))
 
         return generator_to_token_allocs[self.generator_to_use_idx]
 

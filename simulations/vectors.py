@@ -14,6 +14,7 @@ def _plot_embeddings(labels: List[str], embeddings: np.array, agent_name: str, n
     unique_labels = np.unique(labels)
     colors = plt.get_cmap('tab20')(Normalize()(unique_labels))
     plt.figure(figsize=(15, 15))
+    plt.grid()
 
     if color_by_generator:
         for j, label in enumerate(unique_labels):
@@ -31,12 +32,27 @@ def _plot_embeddings(labels: List[str], embeddings: np.array, agent_name: str, n
 
 
 def _evaluate_clustering(embeddings: np.array, agent_name: str) -> None:
-    k_range, silhouette_scores, db_scores, wcss_scores, bcss_scores = range(20, 41), [], [], [], []
+    def _kmeans_with_min_size(x: np.array, k: int, min_cluser_size: int) -> Optional[KMeans]:
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(x)
+        cluster_sizes = np.bincount(kmeans.labels_)
+
+        if np.any(cluster_sizes < min_cluser_size):
+            return None
+
+        return kmeans
+
+    k_range, silhouette_scores, db_scores, wcss_scores, bcss_scores = range(20, 76), [], [], [], []
     overall_mean = np.mean(embeddings, axis=0)
 
     for k in k_range:
-        kmeans = KMeans(n_clusters=k)
-        kmeans.fit(embeddings)
+        kmeans = _kmeans_with_min_size(embeddings, k, 10)
+        if kmeans is None:
+            silhouette_scores.append(-np.inf)
+            db_scores.append(np.inf)
+            wcss_scores.append(np.inf)
+            bcss_scores.append(-np.inf)
+            continue
         labels = kmeans.labels_
 
         silhouette_scores.append(silhouette_score(embeddings, labels))
@@ -108,8 +124,8 @@ for agent_name in ['AlegAATr', 'DQN']:
             all_vectors = np.array(vector_list) if all_vectors is None else np.concatenate(
                 [all_vectors, np.array(vector_list)])
 
-        _plot_embeddings(labels, TSNE(n_components=2).fit_transform(vectors), agent_name, i, color_by_generator=False)
+        _plot_embeddings(labels, TSNE(n_components=2).fit_transform(vectors), agent_name, i, color_by_generator=True)
 
     all_embeddings = TSNE(n_components=2).fit_transform(all_vectors)
-    _plot_embeddings(all_labels, all_embeddings, agent_name, color_by_generator=False)
+    _plot_embeddings(all_labels, all_embeddings, agent_name, color_by_generator=True)
     _evaluate_clustering(all_embeddings, agent_name)
