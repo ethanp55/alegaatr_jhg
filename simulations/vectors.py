@@ -13,20 +13,23 @@ def _plot_embeddings(labels: List[str], embeddings: np.array, agent_name: str, n
     labels = np.array(labels)
     unique_labels = np.unique(labels)
     colors = plt.get_cmap('tab20')(Normalize()(unique_labels))
-    plt.figure(figsize=(15, 15))
+    fig = plt.figure(figsize=(15, 15))
+    ax = fig.add_subplot(111, projection='3d')
     plt.grid()
 
     if color_by_generator:
         for j, label in enumerate(unique_labels):
             label_points = embeddings[labels == label]
-            plt.scatter(label_points[:, 0], label_points[:, 1], s=50, alpha=1.0, color=colors[j], label=label)
+            ax.scatter(label_points[:, 0], label_points[:, 1], label_points[:, 2], s=10, alpha=1.0, color=colors[j],
+                       label=label)
 
-        plt.legend(loc='best', fontsize='18')
+        ax.legend(loc='best', fontsize='18')
 
     else:
-        plt.scatter(embeddings[:, 0], embeddings[:, 1], s=50, alpha=1.0, color='green')
+        ax.scatter(embeddings[:, 0], embeddings[:, 1], embeddings[:, 2], s=10, alpha=1.0, color='green')
 
     image_name_adj = f'_c={n_cats}' if n_cats is not None else ''
+    # plt.show()
     plt.savefig(f'../simulations/vector_plots/{agent_name}{image_name_adj}.png', bbox_inches='tight')
     plt.clf()
 
@@ -124,8 +127,8 @@ for agent_name in ['AlegAATr', 'DQN']:
             all_vectors = np.array(vector_list) if all_vectors is None else np.concatenate(
                 [all_vectors, np.array(vector_list)])
 
-        _plot_embeddings(labels, TSNE(n_components=2).fit_transform(vectors), agent_name, i, color_by_generator=True)
+        # _plot_embeddings(labels, TSNE(n_components=3).fit_transform(vectors), agent_name, i, color_by_generator=True)
 
-    all_embeddings = TSNE(n_components=2).fit_transform(all_vectors)
+    all_embeddings = TSNE(n_components=3).fit_transform(all_vectors)
     _plot_embeddings(all_labels, all_embeddings, agent_name, color_by_generator=True)
     _evaluate_clustering(all_embeddings, agent_name)
