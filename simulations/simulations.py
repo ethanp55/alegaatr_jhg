@@ -65,16 +65,12 @@ def self_play(agent: AbstractAgent, max_players: int = 20) -> List[AbstractAgent
     return agent_copies
 
 
-N_EPOCHS = 5
-# N_EPOCHS = 1
+N_EPOCHS = 1
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
-INITIAL_POP_CONDITIONS = ['random']
+INITIAL_POP_CONDITIONS = ['equal']
 N_PLAYERS = [5, 10, 15, 20]
-# N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [10, 20, 30, 40]
-# N_ROUNDS = [40]
 N_CATS = [0, 1, 2]
-# N_CATS = [0]
 
 names = []
 
@@ -90,6 +86,7 @@ def simulations() -> None:
     for file in os.listdir('../simulations/results/'):
         name = file.split('_')[0]
         if name in names:
+            # if True:
             with open(f'../simulations/results/{file}', 'w', newline='') as _:
                 pass
 
@@ -122,12 +119,12 @@ def simulations() -> None:
                         list_of_opponents.append((basic_bandits(max_players=n_other_players), 'basicbandits'))
                         list_of_opponents.append((random_mixture_of_all_types(n_other_players), 'mixture'))
                         list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
-                        # list_of_opponents.append(([], 'selfplay'))
+                        list_of_opponents.append(([], 'selfplay'))
 
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
                             agents_to_test = []
-                            # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
                             # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
                             #                                generator_usage_file=f'../simulations/alegaatr_generator_usage/{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
                             # agents_to_test.append(EXP4())

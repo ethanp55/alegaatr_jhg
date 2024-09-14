@@ -4,7 +4,7 @@ import os
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 MAX_N_PLAYERS = 20
-SAVE_DATA = False
+SAVE_DATA = True
 FINAL_POPS, PERCENTILES, WINS, POP_SUMS = True, False, False, False
 
 
@@ -38,6 +38,10 @@ for file in os.listdir(folder):
     opp_type = file[len(agent_name) + 1:].split('_')[0]
     opp_type = 'banditsociety' if opp_type == 'basicbandits' else opp_type
     data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
+    if data.shape[0] == 0:
+        continue
+    if len(data.shape) == 1:
+        data = data.reshape(1, -1)
 
     if SAVE_DATA:
         for row in data:
@@ -112,7 +116,7 @@ if SAVE_DATA:
             'initial_class': initial_pop_classes
         }
     )
-    df.to_csv('../simulations/formatted_results.csv', index=False)
+    df.to_csv('../simulations/formatted_results_hand_picked.csv', index=False)
 
 
 # Effect sizes for final popularities (overall)
