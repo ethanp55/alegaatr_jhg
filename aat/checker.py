@@ -332,7 +332,7 @@ class AssumptionChecker:
     def close_to_target_strength(self, desired_community, target: float) -> None:
         # Calculate how far away the collective strength is from the target strength
         collective_strength = desired_community.collective_strength
-        self.near_target_strength = min(collective_strength / target, 1.0)
+        self.near_target_strength = min((collective_strength / target) if target != 0 else 1.0, 1.0)
 
     def how_many_members_missing(self, desired_community, communities: List[Set[int]]) -> None:
         # Calculate how many members still need to be added/removed to form the desired community

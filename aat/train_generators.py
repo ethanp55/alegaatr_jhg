@@ -113,7 +113,10 @@ class BasicBandit(AbstractAgent):
         # Slowly decrease the probability of exploring
         self.epsilon *= self.epsilon_decay
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations
 
 
 # Agent that just randomly (uniform) chooses a generator to use
@@ -146,7 +149,10 @@ class UniformSelector(AbstractAgent):
         # Randomly (uniform) choose a generator to use
         self.generator_to_use_idx = np.random.choice(self.generator_indices)
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations
 
 
 # Agent that favors generators that have been used more recently
@@ -198,7 +204,10 @@ class FavorMoreRecent(AbstractAgent):
 
         self.n_rounds_used += 1
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -270,12 +279,12 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-N_EPOCHS = 5
+N_EPOCHS = 10
 INITIAL_POP_CONDITIONS = ['equal', 'random']
 N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [20, 30, 40]
 N_CATS = [0, 1]
-AUTO_AAT = True
+AUTO_AAT = False
 
 
 def train_generators() -> None:
@@ -319,7 +328,6 @@ def train_generators() -> None:
                         for opponents in list_of_opponents:
                             # Create different agents to train on
                             agents_to_train_on = []
-                            # agents_to_train_on.append(BasicBandit(check_assumptions=True))
                             # agents_to_train_on.append(UniformSelector(check_assumptions=True))
                             # agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
                             agents_to_train_on.append(

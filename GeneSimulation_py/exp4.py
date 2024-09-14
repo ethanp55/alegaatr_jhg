@@ -45,4 +45,7 @@ class EXP4(AbstractAgent):
                          self.weights.values()]
         self.generator_to_use_idx = random.choices(list(self.weights.keys()), weights=self.p_t_vals, k=1)[0]
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations

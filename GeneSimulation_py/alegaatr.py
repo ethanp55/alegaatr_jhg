@@ -130,7 +130,10 @@ class AlegAATr(AbstractAgent):
             else:
                 self.n_rounds_since_used[generator_idx] += 1
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations
 
     def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                              influence: np.array, extra_data, v: np.array, transactions: np.array) -> None:

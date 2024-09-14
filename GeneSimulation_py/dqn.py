@@ -31,7 +31,6 @@ class DQN(keras.Model):
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-    def build(self) -> None:
         self.dense1 = keras.layers.Dense(self.state_dim, activation='relu')
         self.dense2 = keras.layers.Dense(32, activation='relu')
         self.output_layer = keras.layers.Dense(self.action_dim, activation='linear')
@@ -169,7 +168,10 @@ class DQNAgent(AbstractAgent):
                 network_state = self.model(np.expand_dims(scaled_state, 0), return_transformed_state=True)
                 self._write_to_track_vectors_file(network_state.numpy().reshape(-1, ))
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations
 
     def update_networks(self) -> None:
         # Update target network weights periodically

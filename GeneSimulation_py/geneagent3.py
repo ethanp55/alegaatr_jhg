@@ -155,6 +155,46 @@ class GeneAgent3(AbstractAgent):
                 }
                 self.genes_long.append(gene_set)
 
+        elif geneStr == 'all_keep':
+            self.genes_long = []
+            for i in range(0, self.num_gene_copies):
+                gene_set = {
+                    "visualTrait": 50,  # not used
+                    "homophily": 50,  # not used
+                    "alpha": 20,
+                    "otherishDebtLimits": 25,
+                    "coalitionTarget": 70,
+                    "fixedUsage": 50,
+                    "w_modularity": 100,
+                    "w_centrality": 50,
+                    "w_collective_strength": 80,
+                    "w_familiarity": 50,
+                    "w_prosocial": 70,
+                    "initialDefense": 100,
+                    "minKeep": 100,
+                    "defenseUpdate": 50,
+                    "defensePropensity": 50,
+                    "fearDefense": 0,
+                    "safetyFirst": 0,
+                    "pillageFury": 0,
+                    "pillageDelay": 10,
+                    "pillagePriority": 0,
+                    "pillageMargin": 0,
+                    "pillageCompanionship": 50,
+                    "pillageFriends": 0,
+                    "vengenceMultiplier": 100,
+                    "vengenceMax": 100,
+                    "vengencePriority": 100,
+                    "defendFriendMultiplier": 100,
+                    "defendFriendMax": 100,
+                    "defendFriendPriority": 90,
+                    "attackGoodGuys": 0,
+                    "limitingGive": 100,
+                    "groupAware": 0,
+                    "joinCoop": 0,  # not used
+                }
+                self.genes_long.append(gene_set)
+
         else:
             # read geneStr to set up the genotype
             words = geneStr.split("_")
@@ -291,9 +331,6 @@ class GeneAgent3(AbstractAgent):
 
     def play_round(self, player_idx, round_num, received, popularities, influence, extra_data, v, transactions,
                    was_just_used=False):
-        if round_num > 0:
-            self.prev_allocations = transactions
-
         self.run_modularity_checker = True
 
         self.printT(player_idx, str(received))
@@ -320,6 +357,10 @@ class GeneAgent3(AbstractAgent):
             self.alpha = self.genes["alpha"] / 100.0
             self.printT(player_idx, self.getString())
         else:
+            # ********** Start: moving from end of last round to start of this round
+            self.updateIndebtedness(round_num, player_idx, self.prev_allocations, self.prev_popularities)
+            # ********** End: moving from end of last round to start of this round
+
             self.alpha = self.genes["alpha"] / 100.0
             self.updateVars(received, popularities, num_tokens, num_players, player_idx)
 
@@ -460,10 +501,8 @@ class GeneAgent3(AbstractAgent):
                                       self.prev_tokens_kept)
 
         self.prev_popularities = popularities
-        # self.prev_allocations = transaction_vec
+        self.prev_allocations = transaction_vec
         self.prev_influence = influence
-
-        self.updateIndebtedness(round_num, player_idx, transaction_vec, popularities)
 
         if player_idx == self.theTracked:
             print(str(player_idx) + " transaction_vec: " + str(transaction_vec) + " (" + str(num_group_gives) + ")")
@@ -472,6 +511,10 @@ class GeneAgent3(AbstractAgent):
             print(str(player_idx) + " is stealing from self!!!")
 
         return transaction_vec
+
+    def update_prev_allocations(self, actual_allocations):
+        for i in range(0, len(self.prev_allocations)):
+            self.prev_allocations[i] = actual_allocations[i]
 
     def initVars(self, player_idx, extra_data, num_players, popularities):
         # Change on Sep 21

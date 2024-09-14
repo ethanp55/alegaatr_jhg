@@ -58,4 +58,7 @@ class DUCB(AbstractAgent):
 
         self.generator_to_use_idx = max(predictions, key=lambda key: predictions[key])
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations

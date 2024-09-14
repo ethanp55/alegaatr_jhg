@@ -8,20 +8,24 @@ from typing import Dict, Optional
 
 
 class GeneratorPool:
-    def __init__(self, only_use_half: bool = False, check_assumptions: bool = False, auto_aat: bool = False) -> None:
+    def __init__(self, check_assumptions: bool = False, auto_aat: bool = False) -> None:
         self.generator_to_assumption_estimates, self.check_assumptions = {}, check_assumptions
         self.auto_aat = auto_aat
         self.generators, generator_df = [], pd.read_csv(f'../ResultsSaved/generator_genes/genes.csv', header=None)
 
         # Read in the genes for the generators
-        step_size = 2 if only_use_half else 1
-        for i in range(0, len(generator_df), step_size):
+        for i in range(len(generator_df)):
             gene_str = generator_df.iloc[i, 0]
             self.generators.append(GeneAgent3(gene_str, 1, check_assumptions=self.check_assumptions))
+        self.generators.append(GeneAgent3('all_keep', 1, check_assumptions=self.check_assumptions))
 
-        assert len(self.generators) == (8 if only_use_half else 16)
+        assert len(self.generators) == 8
 
         self.pop_history = []
+
+    def update_generator_allocations(self, transactions: np.array) -> None:
+        for generator in self.generators:
+            generator.update_prev_allocations(transactions)
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array, transactions: np.array,
@@ -97,7 +101,10 @@ class GeneratorPool:
         for generator_idx, assumptions_history in self.generator_to_assumption_estimates.items():
             for assumption_estimates, round_num, game_state in assumptions_history:
                 assert round_num > 0
-                assert game_state is not None if self.auto_aat else None
+                if self.auto_aat:
+                    assert game_state is not None
+                else:
+                    assert game_state is None
 
                 discounted_reward = discounted_rewards[round_num - 1]
                 correction_term = discounted_reward / baseline

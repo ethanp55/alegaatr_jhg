@@ -50,7 +50,7 @@ class EEE(AbstractAgent):
                 self.n_e[self.generator_to_use_idx] += 1
                 self.s_e[self.generator_to_use_idx] += self.n_i
                 self.m_e[self.generator_to_use_idx] = self.m_e[self.generator_to_use_idx] + (
-                            self.n_i / self.s_e[self.generator_to_use_idx]) * (avg_phase_reward - self.m_e[
+                        self.n_i / self.s_e[self.generator_to_use_idx]) * (avg_phase_reward - self.m_e[
                     self.generator_to_use_idx])
                 self.phase_rewards, self.phase_counter, self.n_i, self.in_phase = [], 0, 0, False
 
@@ -75,4 +75,7 @@ class EEE(AbstractAgent):
 
             self.n_i, self.in_phase = np.random.choice(list(range(1, 5))), True
 
-        return generator_to_token_allocs[self.generator_to_use_idx]
+        token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
+        self.generator_pool.update_generator_allocations(token_allocations)
+
+        return token_allocations
