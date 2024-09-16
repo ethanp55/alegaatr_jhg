@@ -12,6 +12,7 @@ from GeneSimulation_py.eee import EEE
 from GeneSimulation_py.exp4 import EXP4
 from GeneSimulation_py.geneagent3 import GeneAgent3
 from GeneSimulation_py.main import run_with_specified_agents
+from GeneSimulation_py.ralegaatr import RAlegAATr
 from GeneSimulation_py.rucb import RUCB
 from GeneSimulation_py.swucb import SWUCB
 from GeneSimulation_py.ucb import UCB
@@ -65,7 +66,7 @@ def self_play(agent: AbstractAgent, max_players: int = 20) -> List[AbstractAgent
     return agent_copies
 
 
-N_EPOCHS = 1
+N_EPOCHS = 4
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 INITIAL_POP_CONDITIONS = ['equal']
 N_PLAYERS = [5, 10, 15, 20]
@@ -118,22 +119,23 @@ def simulations() -> None:
                         list_of_opponents.append((random_agents(n_other_players), 'randoms'))
                         list_of_opponents.append((basic_bandits(max_players=n_other_players), 'basicbandits'))
                         list_of_opponents.append((random_mixture_of_all_types(n_other_players), 'mixture'))
-                        list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
+                        # list_of_opponents.append((society_of_bandits(n_other_players), 'banditsociety'))
                         list_of_opponents.append(([], 'selfplay'))
 
                         for opponents, opponents_label in list_of_opponents:
                             # Create different agents to test
                             agents_to_test = []
-                            agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+                            # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+                            # agents_to_test.append(RAlegAATr(train_network=False))
                             # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
                             #                                generator_usage_file=f'../simulations/alegaatr_generator_usage/{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
-                            # agents_to_test.append(EXP4())
-                            # agents_to_test.append(EEE())
-                            # agents_to_test.append(UCB())
+                            agents_to_test.append(EXP4())
+                            agents_to_test.append(EEE())
+                            agents_to_test.append(UCB())
                             # agents_to_test.append(DUCB())
                             # agents_to_test.append(RUCB())
                             # agents_to_test.append(SWUCB())
-                            agents_to_test.append(DQNAgent(train_network=False))
+                            # agents_to_test.append(DQNAgent(train_network=False))
                             # agents_to_test.extend(generators())
 
                             for agent_to_test in agents_to_test:
