@@ -1,13 +1,27 @@
 from collections import deque
-from copy import deepcopy
 import csv
 from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
 import numpy as np
+import pickle
 import random
 import tensorflow as tf
 from tensorflow import keras
 from typing import Optional
+
+
+class DynamicMinMaxScaler:
+    def __init__(self, num_features: int) -> None:
+        self.num_features = num_features
+        self.min_vals = np.inf * np.ones(num_features)
+        self.max_vals = -np.inf * np.ones(num_features)
+
+    def update(self, state: np.array) -> None:
+        self.min_vals = np.minimum(self.min_vals, state)
+        self.max_vals = np.maximum(self.max_vals, state)
+
+    def scale(self, state: np.array) -> np.array:
+        return (state - self.min_vals) / (self.max_vals - self.min_vals + 0.00001)
 
 
 class DQN(keras.Model):
@@ -35,7 +49,7 @@ class DQN(keras.Model):
 
 class RAlegAATr(AbstractAgent):
     def __init__(self, learning_rate: float = 0.001, discount_factor: float = 0.9, epsilon: float = 0.1,
-                 epsilon_decay: float = 0.99, replay_buffer_size: int = 5000, batch_size: int = 256,
+                 epsilon_decay: float = 0.99, replay_buffer_size: int = 50000, batch_size: int = 256,
                  train_network: bool = False, track_vector_file: Optional[str] = None) -> None:
         super().__init__()
         self.whoami = 'RAlegAATr'
@@ -46,7 +60,6 @@ class RAlegAATr(AbstractAgent):
         self.epsilon_decay = epsilon_decay
         self.batch_size = batch_size
         self.state = None
-        self.training_started = False
         self.train_network = train_network
         self.prev_popularity = None
         self.best_loss = np.inf
@@ -71,6 +84,9 @@ class RAlegAATr(AbstractAgent):
 
         # Episode experiences (to add to the replay buffer)
         self.current_episode_experiences = []
+
+        # State scaler
+        self.scaler = DynamicMinMaxScaler(self.state_dim)
 
         # If we're not in training mode, load the saved/trained model
         if not self.train_network:
@@ -102,7 +118,7 @@ class RAlegAATr(AbstractAgent):
 
     def record_final_results(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                              influence: np.array, extra_data, v: np.array, transactions: np.array) -> None:
-        # Add a new experience to the replay buffer and update the network weights (if there are enough experiences)
+        # Add a new experience to the replay buffer
         if self.train_network:
             curr_popularity = popularities[player_idx]
             next_state = [self.generator_pool.assumptions(generator_idx).alignment_vector() for generator_idx in
@@ -111,7 +127,6 @@ class RAlegAATr(AbstractAgent):
             next_state = next_state.reshape(1, -1)
             increase = curr_popularity - self.prev_popularity
             self.add_experience(self.generator_to_use_idx, increase, next_state, True)
-            self.train()
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
@@ -124,7 +139,8 @@ class RAlegAATr(AbstractAgent):
         if self.train_network and self.prev_popularity is not None:
             increase = curr_popularity - self.prev_popularity
             self.add_experience(self.generator_to_use_idx, increase, next_state, False)
-            self.train()
+        if self.prev_popularity is None:
+            self.scaler.update(next_state)
         self.prev_popularity = curr_popularity
 
         # Get the actions of every generator
@@ -139,11 +155,12 @@ class RAlegAATr(AbstractAgent):
             self.generator_to_use_idx = np.random.choice(self.action_dim)
 
         else:
-            q_values = self.model(self.state)
+            scaled_state = self.scaler.scale(self.state)
+            q_values = self.model(scaled_state)
             self.generator_to_use_idx = np.argmax(q_values.numpy())
 
             if self.track_vector_file is not None:
-                network_state = self.model(self.state, return_transformed_state=True)
+                network_state = self.model(scaled_state, return_transformed_state=True)
                 self._write_to_track_vectors_file(network_state.numpy().reshape(-1, ))
 
         token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
@@ -153,53 +170,59 @@ class RAlegAATr(AbstractAgent):
 
     def update_networks(self) -> None:
         # Update target network weights periodically
-        if self.training_started:
-            self.target_model.set_weights(self.model.get_weights())
+        self.target_model.set_weights(self.model.get_weights())
 
     def train(self) -> None:
-        if len(self.replay_buffer) < self.replay_buffer.maxlen:
-            return
+        for _ in range(100):
+            # Sample a batch of experiences from the replay buffer
+            batch = random.sample(self.replay_buffer, self.batch_size)
+            batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = map(np.array, zip(*batch))
+            batch_states, batch_next_states = \
+                batch_states.reshape(self.batch_size, -1), batch_next_states.reshape(self.batch_size, -1)
 
-        self.training_started = True
+            # Q-value update
+            next_q_values = self.target_model(batch_next_states)
+            max_next_q_values = np.max(next_q_values.numpy(), axis=1)
+            targets = batch_rewards + (1 - batch_dones) * self.discount_factor * max_next_q_values
 
-        # Sample a batch of experiences from the replay buffer
-        batch = random.sample(self.replay_buffer, self.batch_size)
-        batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = map(np.array, zip(*batch))
-        batch_states, batch_next_states = \
-            batch_states.reshape(self.batch_size, -1), batch_next_states.reshape(self.batch_size, -1)
+            with tf.GradientTape() as tape:
+                q_values = self.model(batch_states)
+                selected_action_values = tf.reduce_sum(tf.one_hot(batch_actions, self.action_dim) * q_values, axis=1)
+                loss = tf.keras.losses.MSE(targets, selected_action_values)
 
-        # Q-value update
-        next_q_values = self.target_model(batch_next_states)
-        max_next_q_values = np.max(next_q_values.numpy(), axis=1)
-        targets = batch_rewards + (1 - batch_dones) * self.discount_factor * max_next_q_values
+            loss_val = loss.numpy()
+            if loss_val < self.best_loss:
+                print(f'Loss improved from {self.best_loss} to {loss_val}')
+                self.best_loss = loss_val
+                self.save_network()
 
-        with tf.GradientTape() as tape:
-            q_values = self.model(batch_states)
-            selected_action_values = tf.reduce_sum(tf.one_hot(batch_actions, self.action_dim) * q_values, axis=1)
-            loss = tf.keras.losses.MSE(targets, selected_action_values)
+            gradients = tape.gradient(loss, self.model.trainable_variables)
+            self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
-        loss_val = loss.numpy()
-        if loss_val < self.best_loss:
-            print(f'Loss improved from {self.best_loss} to {loss_val}')
-            self.best_loss = loss_val
-            self.save_network()
-
-        gradients = tape.gradient(loss, self.model.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
-
-    def add_experience(self, action: int, reward: float, next_state: np.array, done: bool):
+    def add_experience(self, action: int, reward: float, next_state: np.array, done: bool) -> None:
         # Accumulate experiences over multiple time steps
-        self.current_episode_experiences.append((self.state, action, reward, next_state, done))
+        scaled_state = self.scaler.scale(self.state)
+        scaled_next_state = self.scaler.scale(next_state)
+        self.scaler.update(next_state)
+        self.current_episode_experiences.append((scaled_state, action, reward, scaled_next_state, done))
 
         # If the episode is done, add the accumulated experiences to the replay buffer
         if done:
             self.replay_buffer.extend(self.current_episode_experiences)
             self.current_episode_experiences = []
 
+    def clear_buffer(self) -> None:
+        self.replay_buffer.clear()
+        self.current_episode_experiences = []
+
     def save_network(self) -> None:
         # Save the network
         self.model.save('../GeneSimulation_py/ralegaatr_model/model.keras')
 
+        with open('../GeneSimulation_py/ralegaatr_model/scaler.pickle', 'wb') as f:
+            pickle.dump(self.scaler, f)
+
     def load_network(self) -> None:
         # Load the network
         self.model = keras.models.load_model('../GeneSimulation_py/ralegaatr_model/model.keras')
+        self.scaler = pickle.load(open('../GeneSimulation_py/ralegaatr_model/scaler.pickle', 'rb'))

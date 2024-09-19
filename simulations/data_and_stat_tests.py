@@ -4,7 +4,7 @@ import os
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 MAX_N_PLAYERS = 20
-SAVE_DATA = True
+SAVE_DATA = False
 FINAL_POPS, PERCENTILES, WINS, POP_SUMS = True, False, False, False
 
 

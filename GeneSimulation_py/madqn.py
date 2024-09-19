@@ -48,10 +48,15 @@ class DQN(keras.Model):
 
 class MADQN(AbstractAgent):
     def __init__(self, max_n_players: int = 30, learning_rate: float = 0.001, discount_factor: float = 0.9,
-                 epsilon: float = 0.1, epsilon_decay: float = 0.99, replay_buffer_size: int = 500,
-                 batch_size: int = 32, train_networks: bool = False) -> None:
+                 epsilon: float = 0.1, epsilon_decay: float = 0.99, replay_buffer_size: int = 5000,
+                 batch_size: int = 128, train_networks: bool = False) -> None:
         super().__init__()
         self.whoami = 'MADQN'
+
+        # Generators
+        self.generator_pool = GeneratorPool()
+        self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
+        self.generator_to_use_idx = None
 
         # Variables used for training and/or action selection
         self.discount_factor = discount_factor
@@ -59,14 +64,9 @@ class MADQN(AbstractAgent):
         self.epsilon_decay = epsilon_decay
         self.batch_size = batch_size
         self.state = None
-        self.training_started = False
         self.train_networks = train_networks
         self.prev_popularity = None
-
-        # Generators
-        self.generator_pool = GeneratorPool()
-        self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
-        self.generator_to_use_idx = None
+        self.best_losses = [np.inf for _ in self.generator_indices]
 
         # DQN and target models
         self.state_dim = (max_n_players ** 2) + (
@@ -90,7 +90,7 @@ class MADQN(AbstractAgent):
         # State scaler
         self.scalers = [DynamicMinMaxScaler(self.state_dim) for _ in self.generator_indices]
 
-        # If we're not in training mode, load the saved/trained model
+        # If we're not in training mode, load the saved/trained models
         if not self.train_networks:
             self.load_networks()
 
@@ -118,7 +118,6 @@ class MADQN(AbstractAgent):
             next_state = np.append(next_state, np.zeros(n_zeroes_for_state))
             increase = curr_popularity - self.prev_popularity
             self.add_experience(self.generator_to_use_idx, increase, next_state, True)
-            self.train()
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
@@ -131,9 +130,6 @@ class MADQN(AbstractAgent):
         if self.train_networks and self.prev_popularity is not None:
             increase = curr_popularity - self.prev_popularity
             self.add_experience(self.generator_to_use_idx, increase, next_state, False)
-            self.train()
-        if self.prev_popularity is None:
-            self.scalers[self.generator_to_use_idx].update(next_state)
         self.prev_popularity = curr_popularity
 
         # Get the actions of every generator
@@ -162,38 +158,38 @@ class MADQN(AbstractAgent):
 
         return token_allocations
 
-    def update_networks(self) -> None:
-        # Update target network weights periodically
-        if self.training_started:
-            for i in self.generator_indices:
-                model, target_model = self.models[i], self.target_models[i]
-                target_model.set_weights(model.get_weights())
-
     def train(self) -> None:
-        for i in range(len(self.replay_buffers)):
-            if len(self.replay_buffers[i]) < self.batch_size:
-                return
-
-        self.training_started = True
-
         for i in self.generator_indices:
+            if len(self.replay_buffers[i]) < self.batch_size:
+                continue
+
             model, target_model, optimizer = self.models[i], self.target_models[i], self.optimizers[i]
 
-            # Sample a batch of experiences from the replay buffer
-            batch = random.sample(self.replay_buffers[i], self.batch_size)
-            batch_states, batch_rewards, batch_next_states, batch_dones = map(np.array, zip(*batch))
+            for _ in range(100):
+                best_loss = self.best_losses[i]
 
-            # Q-learning update using the DQN loss
-            next_q_values = target_model(batch_next_states)
+                # Sample a batch of experiences from the replay buffer
+                batch = random.sample(self.replay_buffers[i], self.batch_size)
+                batch_states, batch_rewards, batch_next_states, batch_dones = map(np.array, zip(*batch))
 
-            targets = batch_rewards + (1 - batch_dones) * self.discount_factor * next_q_values
+                # Q-learning update using the DQN loss
+                next_q_values = target_model(batch_next_states)
+                targets = batch_rewards + (1 - batch_dones) * self.discount_factor * tf.squeeze(next_q_values)
 
-            with tf.GradientTape() as tape:
-                q_values = model(batch_states)
-                loss = tf.keras.losses.MSE(targets, q_values)
+                with tf.GradientTape() as tape:
+                    q_values = model(batch_states)
+                    loss = tf.keras.losses.MSE(targets, tf.squeeze(q_values))
 
-            gradients = tape.gradient(loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+                loss_val = loss.numpy()
+                if loss_val < best_loss:
+                    print(f'Loss {i} improved from {best_loss} to {loss_val}')
+                    self.best_losses[i] = loss_val
+                    self.save_networks()
+
+                gradients = tape.gradient(loss, model.trainable_variables)
+                optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+
+            target_model.set_weights(model.get_weights())
 
     def add_experience(self, action: int, reward: float, next_state: np.array, done: bool):
         # Accumulate experiences over multiple time steps
@@ -203,10 +199,16 @@ class MADQN(AbstractAgent):
 
         self.current_episode_experiences[action].append((scaled_state, reward, scaled_next_state, done))
 
-        # If the episode is done, add the accumulated experiences to the replay buffer
+        # If the episode is done, add the accumulated experiences to the replay buffers
         if done:
-            self.replay_buffers[action].extend(self.current_episode_experiences)
-            self.current_episode_experiences[action] = []
+            for i in self.generator_indices:
+                self.replay_buffers[i].extend(self.current_episode_experiences[i])
+                self.current_episode_experiences[i] = []
+
+    def clear_buffer(self) -> None:
+        for i in self.generator_indices:
+            self.replay_buffers[i].clear()
+            self.current_episode_experiences[i] = []
 
     def save_networks(self) -> None:
         # Save the networks and scalers

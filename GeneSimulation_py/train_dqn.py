@@ -61,11 +61,10 @@ for epoch in range(N_EPOCHS_ADJ):
 
                     curr_iteration += 1
 
-    # At the end of each epoch/episode, decrease the rate of exploration and set the model equal to the target network
+    # At the end of each epoch/episode
+    dqn.train()
     dqn.update_epsilon()
     dqn.update_networks()
-
-    # For safety/checkpoint purposes, save the network at the end of each epoch
-    dqn.save_network()
+    dqn.clear_buffer()
 
     print(f'Win rate: {n_wins / n_games}')

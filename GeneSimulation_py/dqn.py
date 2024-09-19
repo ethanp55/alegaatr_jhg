@@ -50,8 +50,8 @@ class DQN(keras.Model):
 
 class DQNAgent(AbstractAgent):
     def __init__(self, max_n_players: int = 30, learning_rate: float = 0.001, discount_factor: float = 0.9,
-                 epsilon: float = 0.1, epsilon_decay: float = 0.99, replay_buffer_size: int = 500,
-                 batch_size: int = 32, train_network: bool = False, track_vector_file: Optional[str] = None) -> None:
+                 epsilon: float = 0.1, epsilon_decay: float = 0.99, replay_buffer_size: int = 50000,
+                 batch_size: int = 256, train_network: bool = False, track_vector_file: Optional[str] = None) -> None:
         super().__init__()
         self.whoami = 'DQN'
 
@@ -61,9 +61,9 @@ class DQNAgent(AbstractAgent):
         self.epsilon_decay = epsilon_decay
         self.batch_size = batch_size
         self.state = None
-        self.training_started = False
         self.train_network = train_network
         self.prev_popularity = None
+        self.best_loss = np.inf
 
         # Generators
         self.generator_pool = GeneratorPool()
@@ -130,7 +130,6 @@ class DQNAgent(AbstractAgent):
             next_state = np.append(next_state, np.zeros(n_zeroes_for_state))
             increase = curr_popularity - self.prev_popularity
             self.add_experience(self.generator_to_use_idx, increase, next_state, True)
-            self.train()
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
@@ -143,7 +142,6 @@ class DQNAgent(AbstractAgent):
         if self.train_network and self.prev_popularity is not None:
             increase = curr_popularity - self.prev_popularity
             self.add_experience(self.generator_to_use_idx, increase, next_state, False)
-            self.train()
         if self.prev_popularity is None:
             self.scaler.update(next_state)
         self.prev_popularity = curr_popularity
@@ -175,32 +173,33 @@ class DQNAgent(AbstractAgent):
 
     def update_networks(self) -> None:
         # Update target network weights periodically
-        if self.training_started:
-            self.target_model.set_weights(self.model.get_weights())
+        self.target_model.set_weights(self.model.get_weights())
 
     def train(self) -> None:
-        if len(self.replay_buffer) < self.batch_size:
-            return
+        for _ in range(100):
+            # Sample a batch of experiences from the replay buffer
+            batch = random.sample(self.replay_buffer, self.batch_size)
+            batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = map(np.array, zip(*batch))
 
-        self.training_started = True
+            # Q-learning update using the DQN loss
+            next_q_values = self.target_model(batch_next_states)
+            max_next_q_values = np.max(next_q_values.numpy(), axis=1)
 
-        # Sample a batch of experiences from the replay buffer
-        batch = random.sample(self.replay_buffer, self.batch_size)
-        batch_states, batch_actions, batch_rewards, batch_next_states, batch_dones = map(np.array, zip(*batch))
+            targets = batch_rewards + (1 - batch_dones) * self.discount_factor * max_next_q_values
 
-        # Q-learning update using the DQN loss
-        next_q_values = self.target_model(batch_next_states)
-        max_next_q_values = np.max(next_q_values.numpy(), axis=1)
+            with tf.GradientTape() as tape:
+                q_values = self.model(batch_states)
+                selected_action_values = tf.reduce_sum(tf.one_hot(batch_actions, self.action_dim) * q_values, axis=1)
+                loss = tf.keras.losses.MSE(targets, selected_action_values)
 
-        targets = batch_rewards + (1 - batch_dones) * self.discount_factor * max_next_q_values
+            loss_val = loss.numpy()
+            if loss_val < self.best_loss:
+                print(f'Loss improved from {self.best_loss} to {loss_val}')
+                self.best_loss = loss_val
+                self.save_network()
 
-        with tf.GradientTape() as tape:
-            q_values = self.model(batch_states)
-            selected_action_values = tf.reduce_sum(tf.one_hot(batch_actions, self.action_dim) * q_values, axis=1)
-            loss = tf.keras.losses.MSE(targets, selected_action_values)
-
-        gradients = tape.gradient(loss, self.model.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+            gradients = tape.gradient(loss, self.model.trainable_variables)
+            self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
     def add_experience(self, action: int, reward: float, next_state: np.array, done: bool):
         # Accumulate experiences over multiple time steps
@@ -214,6 +213,10 @@ class DQNAgent(AbstractAgent):
         if done:
             self.replay_buffer.extend(self.current_episode_experiences)
             self.current_episode_experiences = []
+
+    def clear_buffer(self) -> None:
+        self.replay_buffer.clear()
+        self.current_episode_experiences = []
 
     def save_network(self) -> None:
         # Save the network and scaler
