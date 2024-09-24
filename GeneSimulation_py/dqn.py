@@ -99,6 +99,8 @@ class DQNAgent(AbstractAgent):
             with open(f'{self.track_vector_file}.csv', 'w', newline='') as _:
                 pass
 
+        self.generators_used = set()
+
     def _write_to_track_vectors_file(self, state_vector: np.array) -> None:
         assert self.track_vector_file is not None
         with open(f'{self.track_vector_file}.csv', 'a', newline='') as file:
@@ -130,6 +132,8 @@ class DQNAgent(AbstractAgent):
             next_state = np.append(next_state, np.zeros(n_zeroes_for_state))
             increase = curr_popularity - self.prev_popularity
             self.add_experience(self.generator_to_use_idx, increase, next_state, True)
+
+        print(f'Generators used: {self.generators_used}')
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
@@ -165,6 +169,8 @@ class DQNAgent(AbstractAgent):
             if self.track_vector_file is not None:
                 network_state = self.model(np.expand_dims(scaled_state, 0), return_transformed_state=True)
                 self._write_to_track_vectors_file(network_state.numpy().reshape(-1, ))
+
+        self.generators_used.add(self.generator_to_use_idx)
 
         token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
         self.generator_pool.update_generator_allocations(token_allocations)

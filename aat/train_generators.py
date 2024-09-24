@@ -1,13 +1,12 @@
 from copy import deepcopy
-from functools import partial
+from GeneSimulation_py.aalegaatr import AAlegAATr
 from GeneSimulation_py.alegaatr import AlegAATr
 from GeneSimulation_py.assassinagent import AssassinAgent
 from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
 from GeneSimulation_py.geneagent3 import GeneAgent3
 from GeneSimulation_py.main import run_with_specified_agents
-from GeneSimulation_py.randomagent import RandomAgent
-from multiprocessing import Pool
+from GeneSimulation_py.smalegaatr import SMAlegAATr
 import numpy as np
 import os
 import pandas as pd
@@ -121,10 +120,10 @@ class BasicBandit(AbstractAgent):
 
 # Agent that just randomly (uniform) chooses a generator to use
 class UniformSelector(AbstractAgent):
-    def __init__(self, check_assumptions: bool = False) -> None:
+    def __init__(self, check_assumptions: bool = False, no_baseline: bool = False) -> None:
         super().__init__()
         self.whoami = 'UniformSelector'
-        self.generator_pool = GeneratorPool(check_assumptions=check_assumptions)
+        self.generator_pool = GeneratorPool(check_assumptions=check_assumptions, no_baseline_labels=no_baseline)
         self.check_assumptions = check_assumptions
         self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
         self.generator_to_use_idx = None
@@ -157,10 +156,10 @@ class UniformSelector(AbstractAgent):
 
 # Agent that favors generators that have been used more recently
 class FavorMoreRecent(AbstractAgent):
-    def __init__(self, check_assumptions: bool = False) -> None:
+    def __init__(self, check_assumptions: bool = False, no_baseline: bool = False) -> None:
         super().__init__()
         self.whoami = 'FavorMoreRecent'
-        self.generator_pool = GeneratorPool(check_assumptions=check_assumptions)
+        self.generator_pool = GeneratorPool(check_assumptions=check_assumptions, no_baseline_labels=no_baseline)
         self.check_assumptions = check_assumptions
         self.generator_indices = [i for i in range(len(self.generator_pool.generators))]
         self.generator_to_use_idx, self.prev_generator_idx = None, None
@@ -210,6 +209,27 @@ class FavorMoreRecent(AbstractAgent):
         return token_allocations
 
 
+# Agent that just randomly (uniform) chooses a generator to use for the entire game
+class RandomAgent(AbstractAgent):
+    def __init__(self) -> None:
+        super().__init__()
+        self.whoami = 'random'
+        generator_pool = GeneratorPool()
+        self.generator = np.random.choice(generator_pool.generators)
+
+    def setGameParams(self, game_params, forced_random) -> None:
+        self.generator.setGameParams(game_params, forced_random)
+
+    def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
+                   influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:
+        token_allocations = self.generator.play_round(player_idx, round_num, received, popularities, influence,
+                                                      extra_data, v, transactions)
+
+        self.generator.update_prev_allocations(token_allocations)
+
+        return token_allocations
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Functions for creating the society of players ------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
@@ -221,16 +241,15 @@ def cabs_with_random_params(max_players: int = 20) -> List[AbstractAgent]:
 def random_selection_of_best_trained_cabs(folder: str, max_players: int = 20) -> List[AbstractAgent]:
     cabs = []
     files = os.listdir(folder)
-    n_generations_to_use = np.random.choice([1, 2, 3])
-    n_cabs_per_gen = int(np.ceil(max_players / n_generations_to_use))
-    files_to_use = np.random.choice(files, size=n_generations_to_use, replace=False)
+    # Choose from one of the final 50 generations
+    files_filtered = [file for file in files if int(file.split('_')[1].split('.')[0]) >= 150]
+    file_to_use = np.random.choice(files_filtered)
 
-    for file in files_to_use:
-        df = pd.read_csv(f'{folder}{file}', header=None)
+    df = pd.read_csv(f'{folder}{file_to_use}', header=None)
 
-        for i in range(n_cabs_per_gen):
-            gene_str = df.iloc[i, 0]
-            cabs.append(GeneAgent3(gene_str, 1))
+    for i in range(max_players):
+        gene_str = df.iloc[i, 0]
+        cabs.append(GeneAgent3(gene_str, 1))
 
     return cabs
 
@@ -279,12 +298,13 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 
-N_EPOCHS = 10
+N_EPOCHS = 5
 INITIAL_POP_CONDITIONS = ['equal', 'random']
 N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [20, 30, 40]
 N_CATS = [0, 1]
 AUTO_AAT = False
+NO_BASELINE = True
 
 
 def train_generators() -> None:
@@ -296,8 +316,9 @@ def train_generators() -> None:
 
     # # Reset any existing training files (opening a file in write mode will truncate it)
     # for file in os.listdir('../aat/training_data/'):
-    #     with open(f'../aat/training_data/{file}', 'w', newline='') as _:
-    #         pass
+    #     if (NO_BASELINE and 'sin_c' in file) or (not NO_BASELINE and 'sin_c' not in file):
+    #         with open(f'../aat/training_data/{file}', 'w', newline='') as _:
+    #             pass
 
     # Run the training process
     for epoch in range(N_EPOCHS):
@@ -309,8 +330,6 @@ def train_generators() -> None:
                     for n_cats in N_CATS:
                         if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
                             print(f'{100 * (curr_iteration / n_training_iterations)}%')
-                        list_of_players = []
-
                         # Create players, aside from main agent to train on and any cats
                         n_other_players = n_players - 1 - n_cats
                         list_of_opponents = []
@@ -328,21 +347,20 @@ def train_generators() -> None:
                         for opponents in list_of_opponents:
                             # Create different agents to train on
                             agents_to_train_on = []
-                            # agents_to_train_on.append(UniformSelector(check_assumptions=True))
-                            # agents_to_train_on.append(FavorMoreRecent(check_assumptions=True))
-                            agents_to_train_on.append(
-                                AlegAATr(lmbda=0.0, ml_model_type='knn', train=True, auto_aat=AUTO_AAT))
+                            agents_to_train_on.append(UniformSelector(check_assumptions=True, no_baseline=NO_BASELINE))
+                            agents_to_train_on.append(FavorMoreRecent(check_assumptions=True, no_baseline=NO_BASELINE))
+                            # agents_to_train_on.append(
+                            #     AlegAATr(lmbda=0.0, ml_model_type='knn', train=True, auto_aat=AUTO_AAT))
+                            # agents_to_train_on.append(AAlegAATr(train=True))
+                            # agents_to_train_on.append(SMAlegAATr(train=True))
 
                             for agent_to_train_on in agents_to_train_on:
                                 # Create cats (if any)
                                 cats = [AssassinAgent() for _ in range(n_cats)]
                                 players = create_society(agent_to_train_on, cats, deepcopy(opponents), n_players)
-                                list_of_players.append(players)
 
-                        # Spin off a process for each grouping of players and play the game
-                        pool = Pool(processes=len(list_of_players))
-                        pool.map(partial(run_with_specified_agents, initial_pop_setting=initial_pop_condition,
-                                         numRounds=n_rounds), list_of_players)
+                                run_with_specified_agents(players, initial_pop_setting=initial_pop_condition,
+                                                          numRounds=n_rounds)
 
                         curr_iteration += 1
 

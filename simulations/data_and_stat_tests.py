@@ -4,7 +4,7 @@ import os
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 MAX_N_PLAYERS = 20
-SAVE_DATA = False
+SAVE_DATA = True
 FINAL_POPS, PERCENTILES, WINS, POP_SUMS = True, False, False, False
 
 
@@ -57,8 +57,14 @@ for file in os.listdir(folder):
             agent_pop = row[-1]
             pop_sums.append(sum(row))
             final_pops.append(agent_pop)
-            percentiles.append(_calculate_percentile(row, agent_pop))
-            wins.append(1 if agent_pop == row.max() else 0)
+            if opp_type == 'selfplay':
+                percentile = 1.0
+                won = 1
+            else:
+                percentile = _calculate_percentile(row, agent_pop)
+                won = 1 if agent_pop == row.max() else 0
+            percentiles.append(percentile)
+            wins.append(won)
 
         if pop_condition == 'random':
             initial_pop_classes_data = pd.read_csv(f'../simulations/initial_pops/{file}', header=None)

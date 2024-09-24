@@ -1,4 +1,5 @@
 from aat.assumptions import Assumptions
+from copy import deepcopy
 import csv
 import fcntl
 from GeneSimulation_py.geneagent3 import GeneAgent3
@@ -8,9 +9,12 @@ from typing import Dict, Optional
 
 
 class GeneratorPool:
-    def __init__(self, check_assumptions: bool = False, auto_aat: bool = False) -> None:
+    def __init__(self, check_assumptions: bool = False, auto_aat: bool = False,
+                 no_baseline_labels: bool = False) -> None:
         self.generator_to_assumption_estimates, self.check_assumptions = {}, check_assumptions
+        self.generators_to_states = {}
         self.auto_aat = auto_aat
+        self.no_baseline_labels = no_baseline_labels
         self.generators, generator_df = [], pd.read_csv(f'../ResultsSaved/generator_genes/genes.csv', header=None)
 
         # Read in the genes for the generators
@@ -50,6 +54,17 @@ class GeneratorPool:
                 self.generator_to_assumption_estimates[
                     generator_just_used_idx] = self.generator_to_assumption_estimates.get(generator_just_used_idx,
                                                                                           []) + [tup]
+
+                if self.no_baseline_labels:
+                    state_dim = (30 ** 2) + (2 * 30)
+                    curr_state = deepcopy(influence)
+                    curr_state = np.concatenate(
+                        [curr_state.reshape(-1, 1), popularities.reshape(-1, 1), received.reshape(-1, 1)])
+
+                    n_zeroes_for_state = state_dim - curr_state.shape[0]
+                    curr_state = np.append(curr_state, np.zeros(n_zeroes_for_state))
+                    self.generators_to_states[generator_just_used_idx] = self.generators_to_states.get(
+                        generator_just_used_idx, []) + [curr_state]
 
             # Have the generator that was just used run first
             generator_to_token_allocs[generator_just_used_idx] = generator_just_used.play_round(player_idx, round_num,
@@ -98,8 +113,14 @@ class GeneratorPool:
             discounted_rewards[i - 1] = running_sum
 
         # Store the training data
-        for generator_idx, assumptions_history in self.generator_to_assumption_estimates.items():
-            for assumption_estimates, round_num, game_state in assumptions_history:
+        for generator_idx in self.generator_to_assumption_estimates.keys():
+            assumptions_history = self.generator_to_assumption_estimates[generator_idx]
+            states_history = self.generators_to_states.get(generator_idx, [])
+
+            for i in range(len(assumptions_history)):
+                assumption_estimates, round_num, game_state = assumptions_history[i]
+                state = states_history[i] if self.no_baseline_labels else None
+
                 assert round_num > 0
                 if self.auto_aat:
                     assert game_state is not None
@@ -141,6 +162,40 @@ class GeneratorPool:
                         fcntl.flock(file2.fileno(), fcntl.LOCK_UN)
                         fcntl.flock(file3.fileno(), fcntl.LOCK_UN)
                         fcntl.flock(file4.fileno(), fcntl.LOCK_UN)
+
+                elif self.no_baseline_labels:
+                    # Store the alignment vector
+                    adjustment = '_enh' if enhanced else ''
+                    file_path = f'../aat/training_data/generator_{generator_idx}_sin_c_vectors{adjustment}.csv'
+
+                    with open(file_path, 'a', newline='') as file:
+                        fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
+                        writer = csv.writer(file)
+                        writer.writerow(alignment_vector)
+                        fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
+
+                    # Store the state
+                    assert state is not None
+                    file_path = f'../aat/training_data/generator_{generator_idx}_sin_c_states{adjustment}.csv'
+                    with open(file_path, 'a', newline='') as file:
+                        fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
+                        writer = csv.writer(file)
+                        writer.writerow(state)
+                        fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
+
+                    with open(file_path, 'a', newline='') as file:
+                        fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
+                        writer = csv.writer(file)
+                        writer.writerow(alignment_vector)
+                        fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
+
+                    # Store the discounted reward
+                    file_path = f'../aat/training_data/generator_{generator_idx}_sin_c_correction_terms{adjustment}.csv'
+                    with open(file_path, 'a', newline='') as file:
+                        fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
+                        writer = csv.writer(file)
+                        writer.writerow([discounted_reward])
+                        fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
 
                 else:
                     # Store the alignment vector

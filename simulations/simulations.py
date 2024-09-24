@@ -3,6 +3,7 @@ from aat.train_generators import cabs_with_random_params, random_selection_of_be
     basic_bandits, random_mixture_of_all_types, create_society
 from copy import deepcopy
 from functools import partial
+from GeneSimulation_py.aalegaatr import AAlegAATr
 from GeneSimulation_py.alegaatr import AlegAATr
 from GeneSimulation_py.aleqgaatr import AleqgAATr
 from GeneSimulation_py.assassinagent import AssassinAgent
@@ -16,6 +17,7 @@ from GeneSimulation_py.madqn import MADQN
 from GeneSimulation_py.main import run_with_specified_agents
 from GeneSimulation_py.ralegaatr import RAlegAATr
 from GeneSimulation_py.rucb import RUCB
+from GeneSimulation_py.smalegaatr import SMAlegAATr
 from GeneSimulation_py.swucb import SWUCB
 from GeneSimulation_py.ucb import UCB
 from multiprocessing import Process
@@ -68,14 +70,14 @@ def self_play(agent: AbstractAgent, max_players: int = 20) -> List[AbstractAgent
     return agent_copies
 
 
-N_EPOCHS = 5
+N_EPOCHS = 1
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 INITIAL_POP_CONDITIONS = ['equal']
 N_PLAYERS = [5, 10, 15, 20]
 N_ROUNDS = [10, 20, 30, 40]
 N_CATS = [0, 1, 2]
 
-names = ['AleqgAATr']
+names = ['SMAlegAATr']
 
 
 def simulations() -> None:
@@ -128,8 +130,10 @@ def simulations() -> None:
                             # Create different agents to test
                             agents_to_test = []
                             # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+                            # agents_to_test.append(AAlegAATr(enhanced=False))
                             # agents_to_test.append(RAlegAATr(train_network=False))
-                            agents_to_test.append(AleqgAATr(train_network=False))
+                            # agents_to_test.append(AleqgAATr(train_network=False))
+                            agents_to_test.append(SMAlegAATr(enhanced=False))
                             # agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True,
                             #                                generator_usage_file=f'../simulations/alegaatr_generator_usage/{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'))
                             # agents_to_test.append(EXP4())
