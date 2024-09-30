@@ -13,7 +13,7 @@ enhanced = True
 adjustment = '_enh' if enhanced else ''
 
 for file in os.listdir(training_data_folder):
-    if (enhanced and '_enh' not in file) or (not enhanced and '_enh' in file):
+    if (enhanced and '_enh' not in file) or (not enhanced and '_enh' in file) or 'sin_c' in file:
         continue
 
     generator_idx = file.split('_')[1]

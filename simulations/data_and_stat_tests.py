@@ -122,7 +122,7 @@ if SAVE_DATA:
             'initial_class': initial_pop_classes
         }
     )
-    df.to_csv('../simulations/formatted_results_hand_picked.csv', index=False)
+    df.to_csv('../simulations/formatted_results_hand_picked_fewer_cats.csv', index=False)
 
 
 # Effect sizes for final popularities (overall)

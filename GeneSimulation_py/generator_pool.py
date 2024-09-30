@@ -183,12 +183,6 @@ class GeneratorPool:
                         writer.writerow(state)
                         fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
 
-                    with open(file_path, 'a', newline='') as file:
-                        fcntl.flock(file.fileno(), fcntl.LOCK_EX)  # Lock the file (for write safety)
-                        writer = csv.writer(file)
-                        writer.writerow(alignment_vector)
-                        fcntl.flock(file.fileno(), fcntl.LOCK_UN)  # Unlock the file
-
                     # Store the discounted reward
                     file_path = f'../aat/training_data/generator_{generator_idx}_sin_c_correction_terms{adjustment}.csv'
                     with open(file_path, 'a', newline='') as file:

@@ -302,17 +302,23 @@ N_EPOCHS = 5
 INITIAL_POP_CONDITIONS = ['equal', 'random']
 N_PLAYERS = [5, 10, 15]
 N_ROUNDS = [20, 30, 40]
-N_CATS = [0, 1]
 AUTO_AAT = False
 NO_BASELINE = True
 
 
 def train_generators() -> None:
     # Variables to track progress
-    n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS) * len(N_CATS)
+    n_training_iterations = N_EPOCHS * len(INITIAL_POP_CONDITIONS) * len(N_PLAYERS) * len(N_ROUNDS)
     progress_percentage_chunk = int(0.02 * n_training_iterations)
     curr_iteration = 0
     print(n_training_iterations, progress_percentage_chunk)
+
+    # Variables for cats
+    np.random.seed(42)  # For consistency in selecting number of cat agents
+    n_cats_list = list(np.random.choice(a=[0, 1, 2], size=n_training_iterations, p=[0.9, 0.05, 0.05]))
+    print(f'CATS: {n_cats_list}')
+    np.random.seed()
+    cat_idx = 0
 
     # # Reset any existing training files (opening a file in write mode will truncate it)
     # for file in os.listdir('../aat/training_data/'):
@@ -327,42 +333,44 @@ def train_generators() -> None:
         for initial_pop_condition in INITIAL_POP_CONDITIONS:
             for n_players in N_PLAYERS:
                 for n_rounds in N_ROUNDS:
-                    for n_cats in N_CATS:
-                        if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
-                            print(f'{100 * (curr_iteration / n_training_iterations)}%')
-                        # Create players, aside from main agent to train on and any cats
-                        n_other_players = n_players - 1 - n_cats
-                        list_of_opponents = []
-                        list_of_opponents.append(cabs_with_random_params(n_other_players))
-                        list_of_opponents.append(
-                            random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/', n_other_players))
-                        list_of_opponents.append(
-                            random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/', n_other_players))
-                        list_of_opponents.append(
-                            random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', n_other_players))
-                        list_of_opponents.append(random_agents(n_other_players))
-                        list_of_opponents.append(basic_bandits(max_players=n_other_players))
-                        list_of_opponents.append(random_mixture_of_all_types(n_other_players))
+                    n_cats = n_cats_list[cat_idx]
+                    print(f'N CATS: {n_cats}')
+                    cat_idx += 1
+                    if curr_iteration != 0 and curr_iteration % progress_percentage_chunk == 0:
+                        print(f'{100 * (curr_iteration / n_training_iterations)}%')
+                    # Create players, aside from main agent to train on and any cats
+                    n_other_players = n_players - 1 - n_cats
+                    list_of_opponents = []
+                    list_of_opponents.append(cabs_with_random_params(n_other_players))
+                    list_of_opponents.append(
+                        random_selection_of_best_trained_cabs('../ResultsSaved/no_cat/', n_other_players))
+                    list_of_opponents.append(
+                        random_selection_of_best_trained_cabs('../ResultsSaved/one_cat/', n_other_players))
+                    list_of_opponents.append(
+                        random_selection_of_best_trained_cabs('../ResultsSaved/two_cats/', n_other_players))
+                    list_of_opponents.append(random_agents(n_other_players))
+                    list_of_opponents.append(basic_bandits(max_players=n_other_players))
+                    list_of_opponents.append(random_mixture_of_all_types(n_other_players))
 
-                        for opponents in list_of_opponents:
-                            # Create different agents to train on
-                            agents_to_train_on = []
-                            agents_to_train_on.append(UniformSelector(check_assumptions=True, no_baseline=NO_BASELINE))
-                            agents_to_train_on.append(FavorMoreRecent(check_assumptions=True, no_baseline=NO_BASELINE))
-                            # agents_to_train_on.append(
-                            #     AlegAATr(lmbda=0.0, ml_model_type='knn', train=True, auto_aat=AUTO_AAT))
-                            # agents_to_train_on.append(AAlegAATr(train=True))
-                            # agents_to_train_on.append(SMAlegAATr(train=True))
+                    for opponents in list_of_opponents:
+                        # Create different agents to train on
+                        agents_to_train_on = []
+                        # agents_to_train_on.append(UniformSelector(check_assumptions=True, no_baseline=NO_BASELINE))
+                        # agents_to_train_on.append(FavorMoreRecent(check_assumptions=True, no_baseline=NO_BASELINE))
+                        # agents_to_train_on.append(
+                        #     AlegAATr(lmbda=0.0, ml_model_type='knn', train=True, auto_aat=AUTO_AAT))
+                        # agents_to_train_on.append(AAlegAATr(train=True))
+                        agents_to_train_on.append(SMAlegAATr(train=True))
 
-                            for agent_to_train_on in agents_to_train_on:
-                                # Create cats (if any)
-                                cats = [AssassinAgent() for _ in range(n_cats)]
-                                players = create_society(agent_to_train_on, cats, deepcopy(opponents), n_players)
+                        for agent_to_train_on in agents_to_train_on:
+                            # Create cats (if any)
+                            cats = [AssassinAgent() for _ in range(n_cats)]
+                            players = create_society(agent_to_train_on, cats, deepcopy(opponents), n_players)
 
-                                run_with_specified_agents(players, initial_pop_setting=initial_pop_condition,
-                                                          numRounds=n_rounds)
+                            run_with_specified_agents(players, initial_pop_setting=initial_pop_condition,
+                                                      numRounds=n_rounds)
 
-                        curr_iteration += 1
+                    curr_iteration += 1
 
 
 if __name__ == "__main__":

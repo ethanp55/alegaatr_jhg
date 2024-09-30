@@ -15,7 +15,7 @@ np.set_printoptions(precision=2, suppress=True)
 
 
 def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRandom, folder_to_save_to,
-              final_pops_file=None, initial_pops_file=None):
+              final_pops_file=None, initial_pops_file=None, generator_file=None):
     # if hasGovment == True:
     #     tax_rate = 0.0
     #     gov_pop = 0.0       # base_pop * (num_players-1) * tax_rate
@@ -109,6 +109,11 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
     humanInd = findHumanPlayer(players)
     # print("Human is player " + str(humanInd))
 
+    if generator_file is not None:
+        with open(generator_file, 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['round', 'generator'])
+
     sim = GameSimulator(game_params)
     for r in range(rounds):
         if humanInd >= 0:
@@ -140,6 +145,9 @@ def play_game(agents, rounds, gener, gamer, initial_pops, poverty_line, forcedRa
                 sim.get_v(),
                 sim.get_transaction()[i, :]
             )
+
+        if generator_file is not None:
+            players[-1].write_generator_usage(generator_file, r)
 
         # print("transactions:")
         # print(T)
@@ -645,12 +653,12 @@ def define_initial_pops(init_pop, num_players):
 
 
 def run_with_specified_agents(players: List[AbstractAgent], folder_to_save_to: str = None, poverty_line: int = 0,
-                              initial_pop_setting: str = 'equal', numRounds: int = 30,
-                              final_pops_file: str = None, initial_pops_file: str = None) -> np.array:
+                              initial_pop_setting: str = 'equal', numRounds: int = 30, final_pops_file: str = None,
+                              initial_pops_file: str = None, generator_file: str = None) -> np.array:
     initial_pops = define_initial_pops(initial_pop_setting, len(players))
 
     result, avePop = play_game(players, numRounds, 1000, 1000, initial_pops, poverty_line, False,
-                               folder_to_save_to, final_pops_file, initial_pops_file)
+                               folder_to_save_to, final_pops_file, initial_pops_file, generator_file)
     # print("endPop: " + str(result))
     # print("avePop: " + str(avePop))
     # print("relPop: " + str(avePop / sum(avePop)))

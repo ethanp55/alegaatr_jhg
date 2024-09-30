@@ -11,8 +11,7 @@ from utils.utils import BASELINE
 
 class AlegAATr(AbstractAgent):
     def __init__(self, lmbda: float = 0.95, ml_model_type: str = 'knn', lookback: int = 5, train: bool = False,
-                 enhanced: bool = False, generator_usage_file: Optional[str] = None, auto_aat: bool = False,
-                 track_vector_file: Optional[str] = None) -> None:
+                 enhanced: bool = False, auto_aat: bool = False, track_vector_file: Optional[str] = None) -> None:
         super().__init__()
         self.whoami = 'AlegAATr'
         self.lmbda = lmbda
@@ -25,15 +24,11 @@ class AlegAATr(AbstractAgent):
         self._initialize_empirical_data(lookback)
         self.prev_popularity = None
         self.train = train
-        self.generator_usage_file = generator_usage_file
-        if self.generator_usage_file is not None:
-            with open(f'{self.generator_usage_file}.csv', 'w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(['round', 'generator'])
         self.track_vector_file = track_vector_file
         if self.track_vector_file is not None:
             with open(f'{self.track_vector_file}.csv', 'w', newline='') as _:
                 pass
+        self.generators_used = set()
 
     def _read_in_generator_models(self, ml_model_type: str, enhanced: bool) -> None:
         folder = '../aat/knn_models/' if ml_model_type == 'knn' else '../aat/nn_models/'
@@ -55,12 +50,6 @@ class AlegAATr(AbstractAgent):
         for generator_idx in self.generator_indices:
             self.empirical_increases[generator_idx] = deque(maxlen=lookback)
             self.n_rounds_since_used[generator_idx] = 1
-
-    def _write_to_generator_usage_file(self, round_num: int) -> None:
-        assert self.generator_usage_file is not None
-        with open(f'{self.generator_usage_file}.csv', 'a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([round_num, self.generator_to_use_idx])
 
     def _write_to_track_vectors_file(self, alignment_vector: np.array) -> None:
         assert self.track_vector_file is not None
@@ -116,8 +105,6 @@ class AlegAATr(AbstractAgent):
 
         prev_generator_idx = self.generator_to_use_idx
         self.generator_to_use_idx = best_generator_idx
-        if self.generator_to_use_idx != prev_generator_idx and self.generator_usage_file is not None:
-            self._write_to_generator_usage_file(round_num)
 
         if self.track_vector_file is not None and best_vector is not None:
             self._write_to_track_vectors_file(best_vector)
@@ -130,6 +117,8 @@ class AlegAATr(AbstractAgent):
             else:
                 self.n_rounds_since_used[generator_idx] += 1
 
+        self.generators_used.add(self.generator_to_use_idx)
+
         token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
         self.generator_pool.update_generator_allocations(token_allocations)
 
@@ -140,3 +129,5 @@ class AlegAATr(AbstractAgent):
         if self.train:
             self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
                                           transactions, self.generator_to_use_idx, BASELINE, enhanced=True)
+
+        print(f'Generators used: {self.generators_used}')

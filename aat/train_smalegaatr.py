@@ -79,7 +79,7 @@ with open(f'../aat/single_gen_model/single_gen_scaler{adjustment}.pickle', 'wb')
 state_dim = (30 ** 2) + (2 * 30)
 assert aat_vec_train.shape[1] == 59
 assert states_train.shape[1] == state_dim
-model = SingleGenModel(59, state_dim, 8)
+model = SingleGenModel(59, state_dim)
 
 # Items needed for training
 optimizer = Adam()

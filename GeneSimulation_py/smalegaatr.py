@@ -14,11 +14,10 @@ from utils.utils import BASELINE
 
 @keras.saving.register_keras_serializable()
 class SingleGenModel(Model):
-    def __init__(self, aat_dim: int, state_dim: int, action_dim: int) -> None:
+    def __init__(self, aat_dim: int, state_dim: int) -> None:
         super(SingleGenModel, self).__init__()
         self.aat_dim = aat_dim
         self.state_dim = state_dim
-        self.action_dim = action_dim
 
         self.dense_aat_1 = Dense(self.aat_dim, activation='relu')
         self.dense_aat_2 = Dense(self.state_dim, activation='relu')
@@ -29,10 +28,10 @@ class SingleGenModel(Model):
         self.dense_combined_1 = Dense(self.state_dim, activation='relu')
         self.dense_combined_2 = Dense(32, activation='relu')
 
-        self.output_layer = Dense(self.action_dim, activation='linear')
+        self.output_layer = Dense(1, activation='linear')
 
     def get_config(self):
-        return {'state_dim': self.state_dim, 'action_dim': self.action_dim, 'aat_dim': self.aat_dim}
+        return {'state_dim': self.state_dim, 'aat_dim': self.aat_dim}
 
     def call(self, states: Tuple[np.array, np.array], return_transformed_state: bool = False) -> tf.Tensor:
         aat_state, state = states
@@ -145,7 +144,7 @@ class SMAlegAATr(AbstractAgent):
 
         n_zeroes_for_state = self.state_dim - curr_state.shape[0]
         curr_state = np.append(curr_state, np.zeros(n_zeroes_for_state))
-        curr_state = self.scaler.transform(curr_state)
+        curr_state = self.scaler.transform(curr_state.reshape(1, -1))
 
         # Make predictions for each generator
         best_pred, best_generator_idx, best_vector = -np.inf, None, None
