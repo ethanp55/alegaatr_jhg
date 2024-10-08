@@ -26,7 +26,7 @@ class AlegAATr(AbstractAgent):
         self.train = train
         self.track_vector_file = track_vector_file
         if self.track_vector_file is not None:
-            with open(f'{self.track_vector_file}.csv', 'w', newline='') as _:
+            with open(f'{self.track_vector_file}', 'w', newline='') as _:
                 pass
         self.generators_used = set()
 
@@ -53,7 +53,7 @@ class AlegAATr(AbstractAgent):
 
     def _write_to_track_vectors_file(self, alignment_vector: np.array) -> None:
         assert self.track_vector_file is not None
-        with open(f'{self.track_vector_file}.csv', 'a', newline='') as file:
+        with open(f'{self.track_vector_file}', 'a', newline='') as file:
             writer = csv.writer(file)
             row = np.concatenate([np.array([self.generator_to_use_idx]), alignment_vector[0, :]])
             writer.writerow(np.squeeze(row))
@@ -103,7 +103,6 @@ class AlegAATr(AbstractAgent):
                 best_pred, best_generator_idx = pred, generator_idx
                 best_vector = x_scaled if not use_emp_rewards else None
 
-        prev_generator_idx = self.generator_to_use_idx
         self.generator_to_use_idx = best_generator_idx
 
         if self.track_vector_file is not None and best_vector is not None:

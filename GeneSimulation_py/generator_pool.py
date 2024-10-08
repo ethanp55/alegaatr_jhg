@@ -50,7 +50,9 @@ class GeneratorPool:
                     tup = (generator_just_used.assumptions(), round_num, np.squeeze(curr_state))
 
                 else:
-                    tup = (generator_just_used.assumptions(), round_num, None)
+                    assumps = np.array([gen.assumptions().alignment_vector() for gen in self.generators]).reshape(-1, )
+                    tup = (assumps, round_num, None)
+                    # tup = (generator_just_used.assumptions(), round_num, None)
                 self.generator_to_assumption_estimates[
                     generator_just_used_idx] = self.generator_to_assumption_estimates.get(generator_just_used_idx,
                                                                                           []) + [tup]
@@ -129,7 +131,8 @@ class GeneratorPool:
 
                 discounted_reward = discounted_rewards[round_num - 1]
                 correction_term = discounted_reward / baseline
-                alignment_vector = assumption_estimates.alignment_vector()
+                # alignment_vector = assumption_estimates.alignment_vector()
+                alignment_vector = assumption_estimates
 
                 if self.auto_aat:
                     alignment_vector = np.array(alignment_vector).reshape(-1, 1)

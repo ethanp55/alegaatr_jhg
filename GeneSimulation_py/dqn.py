@@ -96,14 +96,14 @@ class DQNAgent(AbstractAgent):
 
         self.track_vector_file = track_vector_file
         if self.track_vector_file is not None:
-            with open(f'{self.track_vector_file}.csv', 'w', newline='') as _:
+            with open(f'{self.track_vector_file}', 'w', newline='') as _:
                 pass
 
         self.generators_used = set()
 
     def _write_to_track_vectors_file(self, state_vector: np.array) -> None:
         assert self.track_vector_file is not None
-        with open(f'{self.track_vector_file}.csv', 'a', newline='') as file:
+        with open(f'{self.track_vector_file}', 'a', newline='') as file:
             writer = csv.writer(file)
             row = np.concatenate([np.array([self.generator_to_use_idx]), state_vector])
             writer.writerow(np.squeeze(row))

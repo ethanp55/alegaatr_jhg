@@ -91,8 +91,7 @@ class SingleGenModel(Model):
 
 
 class SMAlegAATr(AbstractAgent):
-    def __init__(self, train: bool = False, enhanced: bool = False, generator_usage_file: Optional[str] = None,
-                 track_vector_file: Optional[str] = None) -> None:
+    def __init__(self, train: bool = False, enhanced: bool = False, track_vector_file: Optional[str] = None) -> None:
         super().__init__()
         self.whoami = 'SMAlegAATr'
         self.generator_pool = GeneratorPool(check_assumptions=True, no_baseline_labels=True)
@@ -102,29 +101,18 @@ class SMAlegAATr(AbstractAgent):
         self.model = load_model(f'../aat/single_gen_model/single_gen_model{file_adj}.keras')
         self.scaler = pickle.load(open(f'../aat/single_gen_model/single_gen_scaler{file_adj}.pickle', 'rb'))
         self.train = train
-        self.generator_usage_file = generator_usage_file
-        if self.generator_usage_file is not None:
-            with open(f'{self.generator_usage_file}.csv', 'w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(['round', 'generator'])
         self.track_vector_file = track_vector_file
         if self.track_vector_file is not None:
-            with open(f'{self.track_vector_file}.csv', 'w', newline='') as _:
+            with open(f'{self.track_vector_file}', 'w', newline='') as _:
                 pass
         self.state_dim = (30 ** 2) + (2 * 30)
         self.generators_used = set()
 
-    def _write_to_generator_usage_file(self, round_num: int) -> None:
-        assert self.generator_usage_file is not None
-        with open(f'{self.generator_usage_file}.csv', 'a', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerow([round_num, self.generator_to_use_idx])
-
-    def _write_to_track_vectors_file(self, alignment_vector: np.array) -> None:
+    def _write_to_track_vectors_file(self, vec: np.array) -> None:
         assert self.track_vector_file is not None
-        with open(f'{self.track_vector_file}.csv', 'a', newline='') as file:
+        with open(f'{self.track_vector_file}', 'a', newline='') as file:
             writer = csv.writer(file)
-            row = np.concatenate([np.array([self.generator_to_use_idx]), alignment_vector[0, :]])
+            row = np.concatenate([np.array([self.generator_to_use_idx]), vec])
             writer.writerow(np.squeeze(row))
 
     def setGameParams(self, game_params, forced_random) -> None:
@@ -156,16 +144,14 @@ class SMAlegAATr(AbstractAgent):
 
             if pred > best_pred:
                 best_pred, best_generator_idx = pred, generator_idx
-                best_vector = x
 
-        prev_generator_idx = self.generator_to_use_idx
+                if self.track_vector_file is not None:
+                    best_vector = self.model((x, curr_state), return_transformed_state=True).numpy()
+
         self.generator_to_use_idx = best_generator_idx
 
-        if self.generator_to_use_idx != prev_generator_idx and self.generator_usage_file is not None:
-            self._write_to_generator_usage_file(round_num)
-
         if self.track_vector_file is not None and best_vector is not None:
-            self._write_to_track_vectors_file(best_vector)
+            self._write_to_track_vectors_file(best_vector.reshape(-1, ))
 
         self.generators_used.add(self.generator_to_use_idx)
 

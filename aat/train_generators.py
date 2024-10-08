@@ -6,6 +6,8 @@ from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
 from GeneSimulation_py.geneagent3 import GeneAgent3
 from GeneSimulation_py.main import run_with_specified_agents
+from GeneSimulation_py.qalegaatr import QAlegAATr
+from GeneSimulation_py.rawo import RawO
 from GeneSimulation_py.smalegaatr import SMAlegAATr
 import numpy as np
 import os
@@ -360,7 +362,9 @@ def train_generators() -> None:
                         # agents_to_train_on.append(
                         #     AlegAATr(lmbda=0.0, ml_model_type='knn', train=True, auto_aat=AUTO_AAT))
                         # agents_to_train_on.append(AAlegAATr(train=True))
-                        agents_to_train_on.append(SMAlegAATr(train=True))
+                        # agents_to_train_on.append(SMAlegAATr(train=True))
+                        # agents_to_train_on.append(QAlegAATr(train=True))
+                        agents_to_train_on.append(RawO(train=True))
 
                         for agent_to_train_on in agents_to_train_on:
                             # Create cats (if any)

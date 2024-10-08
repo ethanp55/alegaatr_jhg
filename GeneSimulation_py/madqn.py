@@ -1,5 +1,6 @@
 from collections import deque
 from copy import deepcopy
+import csv
 from GeneSimulation_py.baseagent import AbstractAgent
 from GeneSimulation_py.generator_pool import GeneratorPool
 import numpy as np
@@ -7,6 +8,7 @@ import pickle
 import random
 import tensorflow as tf
 from tensorflow import keras
+from typing import Optional
 
 
 class DynamicMinMaxScaler:
@@ -49,7 +51,7 @@ class DQN(keras.Model):
 class MADQN(AbstractAgent):
     def __init__(self, max_n_players: int = 30, learning_rate: float = 0.001, discount_factor: float = 0.9,
                  epsilon: float = 0.1, epsilon_decay: float = 0.99, replay_buffer_size: int = 5000,
-                 batch_size: int = 128, train_networks: bool = False) -> None:
+                 batch_size: int = 128, train_networks: bool = False, track_vector_file: Optional[str] = None) -> None:
         super().__init__()
         self.whoami = 'MADQN'
 
@@ -93,6 +95,18 @@ class MADQN(AbstractAgent):
         # If we're not in training mode, load the saved/trained models
         if not self.train_networks:
             self.load_networks()
+
+        self.track_vector_file = track_vector_file
+        if self.track_vector_file is not None:
+            with open(f'{self.track_vector_file}', 'w', newline='') as _:
+                pass
+
+    def _write_to_track_vectors_file(self, state_vector: np.array) -> None:
+        assert self.track_vector_file is not None
+        with open(f'{self.track_vector_file}', 'a', newline='') as file:
+            writer = csv.writer(file)
+            row = np.concatenate([np.array([self.generator_to_use_idx]), state_vector])
+            writer.writerow(np.squeeze(row))
 
     def setGameParams(self, game_params, forced_random) -> None:
         for generator in self.generator_pool.generators:
@@ -144,14 +158,22 @@ class MADQN(AbstractAgent):
             self.generator_to_use_idx = np.random.choice(self.generator_indices)
 
         else:
-            q_vals = []
+            q_vals, vectors = [], []
 
             for i in self.generator_indices:
                 scaled_state = self.scalers[i].scale(self.state)
                 q_values = self.models[i](np.expand_dims(scaled_state, 0))
                 q_vals.append(q_values.numpy())
 
+                if self.track_vector_file is not None:
+                    vec = self.models[i](np.expand_dims(scaled_state, 0), return_transformed_state=True)
+                    vectors.append(vec.numpy().reshape(-1, ))
+
             self.generator_to_use_idx = np.argmax(q_vals)
+            
+            if self.track_vector_file is not None:
+                vec = vectors[self.generator_to_use_idx]
+                self._write_to_track_vectors_file(vec)
 
         token_allocations = generator_to_token_allocs[self.generator_to_use_idx]
         self.generator_pool.update_generator_allocations(token_allocations)
