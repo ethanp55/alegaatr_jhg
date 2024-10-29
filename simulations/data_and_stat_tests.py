@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
@@ -5,7 +6,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 MAX_N_PLAYERS = 20
 SAVE_DATA = True
-FINAL_POPS, PERCENTILES, WINS, POP_SUMS = True, False, False, False
+FINAL_POPS, PERCENTILES, WINS, POP_SUMS = False, False, False, False
 
 
 def _calculate_percentile(array, value):
@@ -20,6 +21,17 @@ results['overall'], results['banditsociety'] = {}, {}
 names, pop_conditions, num_players, num_rounds, num_cats, opponent_types, initial_pop_classes = \
     [], [], [], [], [], [], []
 pop_sums, final_pops, percentiles, wins = [], [], [], []
+
+adjusted_names_map = {
+    'DQN': 'DQN',
+    'RAlegAATr': 'TAAT',
+    'AleqgAATr': 'TRawAAT',
+    'SOAleqgAATr': 'STRawAAT',
+    'RawO': 'RawR',
+    'AlegAATr': 'AlegAATr',
+    'QAlegAATr': 'RRawAAT',
+    'SMAlegAATr': 'SRRawAAT',
+}
 
 for file in os.listdir(folder):
     agent_name = file.split('_')[0]
@@ -36,6 +48,7 @@ for file in os.listdir(folder):
     n_rounds = file.split('r=')[1].split('_')[0]
     n_cats = file.split('c=')[1].split('_')[0][0]
     opp_type = file[len(agent_name) + 1:].split('_')[0]
+    agent_name = adjusted_names_map[agent_name] if agent_name in adjusted_names_map else agent_name
     opp_type = 'banditsociety' if opp_type == 'basicbandits' else opp_type
     data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
     if data.shape[0] == 0:
@@ -123,6 +136,34 @@ if SAVE_DATA:
         }
     )
     df.to_csv('../simulations/formatted_results_hand_picked_fewer_cats.csv', index=False)
+
+    # Generate results charts
+    # Final popularity
+    average_final_pops_by_alg = df[~df['algorithm'].isin(adjusted_names_map)]
+    average_final_pops_by_alg = average_final_pops_by_alg.groupby('algorithm')['agent_final_pop'].agg(
+        ['mean', 'sem']).reset_index()
+    plt.figure(figsize=(10, 3))
+    plt.grid()
+    plt.bar(average_final_pops_by_alg['algorithm'], average_final_pops_by_alg['mean'],
+            yerr=average_final_pops_by_alg['sem'], capsize=5, color='green')
+    plt.xlabel('Algorithm', fontsize=18, fontweight='bold')
+    plt.ylabel('Popularity', fontsize=18, fontweight='bold')
+    plt.savefig('../simulations/results_plots/final_pop.png', bbox_inches='tight')
+    plt.clf()
+
+    # Final popularity - self-play
+    average_final_pops_by_alg = df[~df['algorithm'].isin(adjusted_names_map)]
+    average_final_pops_by_alg = average_final_pops_by_alg[average_final_pops_by_alg['opponent_type'] == 'selfplay']
+    average_final_pops_by_alg = average_final_pops_by_alg.groupby('algorithm')['agent_final_pop'].agg(
+        ['mean', 'sem']).reset_index()
+    plt.figure(figsize=(10, 3))
+    plt.grid()
+    plt.bar(average_final_pops_by_alg['algorithm'], average_final_pops_by_alg['mean'],
+            yerr=average_final_pops_by_alg['sem'], capsize=5, color='green')
+    plt.xlabel('Algorithm', fontsize=18, fontweight='bold')
+    plt.ylabel('Popularity', fontsize=18, fontweight='bold')
+    plt.savefig('../simulations/results_plots/self_play_pop.png', bbox_inches='tight')
+    plt.clf()
 
 
 # Effect sizes for final popularities (overall)
