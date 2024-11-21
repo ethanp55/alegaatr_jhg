@@ -13,27 +13,28 @@ def _plot_embeddings(labels: List[str], embeddings: np.array, agent_name: str, n
     labels = np.array(labels)
     unique_labels = np.unique(labels)
     colors = plt.get_cmap('tab20')(Normalize()(unique_labels))
-    fig = plt.figure(figsize=(15, 15))
-    ax = fig.add_subplot(111, projection='3d')
-    plt.grid()
+    fig = plt.figure(figsize=(3, 3))
+    # ax = fig.add_subplot(111, projection='3d')
 
     if color_by_generator:
         for j, label in enumerate(unique_labels):
             label_points = embeddings[labels == label]
-            ax.scatter(label_points[:, 0], label_points[:, 1], label_points[:, 2], s=10, alpha=1.0, color=colors[j],
-                       label=label)
-            # plt.scatter(label_points[:, 0], label_points[:, 1], s=10, alpha=1.0, color=colors[j], label=label)
+            # ax.scatter(label_points[:, 0], label_points[:, 1], label_points[:, 2], s=10, alpha=1.0, color=colors[j],
+            #            label=f'CAB {label}')
+            plt.scatter(label_points[:, 0], label_points[:, 1], s=0.1, alpha=1.0, color=colors[j], label=f'CAB {label}')
 
-        plt.legend(loc='best', fontsize='18')
+        # plt.legend(loc='best', fontsize='18')
+        plt.tick_params(axis='both', which='both', bottom=False, top=False, labelbottom=False, left=False, right=False,
+                        labelleft=False)
 
     else:
-        ax.scatter(embeddings[:, 0], embeddings[:, 1], embeddings[:, 2], s=10, alpha=1.0, color='green')
-        # plt.scatter(embeddings[:, 0], embeddings[:, 1], s=10, alpha=1.0, color='green')
+        # ax.scatter(embeddings[:, 0], embeddings[:, 1], embeddings[:, 2], s=10, alpha=1.0, color='green')
+        plt.scatter(embeddings[:, 0], embeddings[:, 1], s=0.1, alpha=1.0, color='green')
 
     image_name_adj = f'_c={n_cats}' if n_cats is not None else ''
     # plt.show()
-    plt.savefig(f'../simulations/vector_plots/{agent_name}{image_name_adj}_3d.png', bbox_inches='tight')
-    # plt.savefig(f'../simulations/vector_plots/{agent_name}{image_name_adj}.png', bbox_inches='tight')
+    # plt.savefig(f'../simulations/vector_plots/{agent_name}{image_name_adj}_3d.png', bbox_inches='tight')
+    plt.savefig(f'../simulations/vector_plots/{agent_name}{image_name_adj}.png', bbox_inches='tight')
     plt.clf()
 
 
@@ -146,8 +147,8 @@ for file in os.listdir(folder):
     assert generators.shape[0] == vectors.shape[0]
     agent_name = file.split('_')[0]
 
-    if agent_name != 'RawO':
-        continue
+    # if agent_name != 'SMAlegAATr' and agent_name != 'AleqgAATr':
+    #     continue
 
     for i in range(generators.shape[0]):
         generator_idx = int(generators[i])
@@ -163,7 +164,7 @@ for agent_name, agent_data in gen_vectors.items():
         all_vectors = np.array(vector_list) if all_vectors is None else np.concatenate(
             [all_vectors, np.array(vector_list)])
 
-    # all_embeddings = TSNE(n_components=2).fit_transform(all_vectors)
-    all_embeddings = TSNE(n_components=3).fit_transform(all_vectors)
+    all_embeddings = TSNE(n_components=2).fit_transform(all_vectors)
+    # all_embeddings = TSNE(n_components=3).fit_transform(all_vectors)
     _plot_embeddings(all_labels, all_embeddings, agent_name, color_by_generator=True)
     # _evaluate_clustering(all_embeddings, agent_name)

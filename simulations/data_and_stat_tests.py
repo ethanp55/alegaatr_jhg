@@ -31,6 +31,8 @@ adjusted_names_map = {
     'AlegAATr': 'AlegAATr',
     'QAlegAATr': 'RRawAAT',
     'SMAlegAATr': 'SRRawAAT',
+    # 'MADQN': 'MADQN',
+    # 'RDQN': 'RDQN'
 }
 
 for file in os.listdir(folder):
@@ -139,7 +141,7 @@ if SAVE_DATA:
 
     # Generate results charts
     # Final popularity
-    average_final_pops_by_alg = df[~df['algorithm'].isin(adjusted_names_map)]
+    average_final_pops_by_alg = df[df['algorithm'].isin(adjusted_names_map.values())]
     average_final_pops_by_alg = average_final_pops_by_alg.groupby('algorithm')['agent_final_pop'].agg(
         ['mean', 'sem']).reset_index()
     plt.figure(figsize=(10, 3))
@@ -152,7 +154,7 @@ if SAVE_DATA:
     plt.clf()
 
     # Final popularity - self-play
-    average_final_pops_by_alg = df[~df['algorithm'].isin(adjusted_names_map)]
+    average_final_pops_by_alg = df[df['algorithm'].isin(adjusted_names_map.values())]
     average_final_pops_by_alg = average_final_pops_by_alg[average_final_pops_by_alg['opponent_type'] == 'selfplay']
     average_final_pops_by_alg = average_final_pops_by_alg.groupby('algorithm')['agent_final_pop'].agg(
         ['mean', 'sem']).reset_index()
