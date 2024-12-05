@@ -2,8 +2,7 @@ import numpy as np
 import os
 from scipy.stats import hmean
 
-baselines = {'keep_all': 81.79069375972314, 'equal_steal': 223.8113639516392, 'self_play_assassin': 117.28817379950767,
-             'coop': 293.63}
+baselines = {'keep_all': 81.79069375972314, 'equal_steal': 223.8113639516392, 'coop': 293.63}
 results, folder = {}, '../simulations/robust_coop_scores/'
 
 for file in os.listdir(folder):
@@ -23,19 +22,14 @@ for file in os.listdir(folder):
         avg_final_pop = sum([row[-1] for row in data]) / len(data)
         val = min(avg_final_pop, comparison) / comparison
 
-    elif opp_type == 'self_play_assassin':
-        all_deviations = []
-        for row in data:
-            deviations = [min(pop, comparison) / comparison for pop in row]
-            all_deviations.append(sum(deviations) / len(deviations))
-        val = sum(all_deviations) / len(all_deviations)
-
     elif opp_type == 'coop':
         all_deviations = []
         for row in data:
-            deviations = [min(pop, comparison) / comparison for pop in row]
+            deviations = [1 - ((comparison - min(pop, comparison)) / comparison) for pop in row]
             all_deviations.append(sum(deviations) / len(deviations))
         val = sum(all_deviations) / len(all_deviations)
+        # avgs = [sum(row) / len(row) for row in data]
+        # val = (sum(avgs) / len(avgs)) / comparison
 
     else:
         raise Exception(f'{opp_type} is not a defined opponent type')

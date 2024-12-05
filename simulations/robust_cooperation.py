@@ -45,67 +45,9 @@ class EqualSteal(AbstractAgent):
         return np.array(tkns)
 
 
-class KillWeakestThieves(AbstractAgent):
-    def __init__(self):
-        super().__init__()
-        self.whoami = 'kill_weakest_thieves'
-        self.gameParams = {}
-        self.attackers = set()
-
-    def setGameParams(self, gameParams, visualTraits):
-        self.gameParams = gameParams
-
-    def play_round(self, player_idx, round_num, recieved, popularities, influence, extra_data, v, transactions):
-        if v is not None:
-            for i in range(len(v)):
-                for j in range(len(v[0])):
-                    if v[i][j] < 0 and i != player_idx:
-                        self.attackers.add(i)
-            weakest_i, weakest_pop = -1, np.inf
-            for i in self.attackers:
-                pop = popularities[i]
-                if pop < weakest_pop:
-                    weakest_i, weakest_pop = i, pop
-            assert weakest_i != player_idx
-            tkns = [0] * len(popularities)
-            if weakest_i != -1 and weakest_pop > 0:
-                tkns[weakest_i] = -len(popularities) * 2
-            else:
-                n_friends = len(popularities) - len(self.attackers)
-                assert n_friends >= 1
-                n_tokens_per_friend = (len(popularities) * 2) // n_friends
-                for i in range(len(popularities)):
-                    if i not in self.attackers:
-                        tkns[i] = n_tokens_per_friend
-
-        else:
-            tkns = [2] * len(popularities)
-
-        return np.array(tkns)
-
-
-class Coop(AbstractAgent):
-    def __init__(self):
-        super().__init__()
-        self.whoami = 'coop'
-        self.gameParams = {}
-
-    def setGameParams(self, gameParams, visualTraits):
-        self.gameParams = gameParams
-
-    def play_round(self, player_idx, round_num, recieved, popularities, influence, extra_data, v, transactions):
-        tkns = [2] * len(popularities)
-
-        return np.array(tkns)
-
-
 N_EPOCHS = 5
 keep_all = GeneAgent3('all_keep', 1)
 equal_steal = EqualSteal()
-kill_weakest_thieves = KillWeakestThieves()
-assassin = GeneAgent3(
-    'gene_0_0_1_25_0_50_100_0_0_0_0_100_0_50_50_0_0_100_10_90_0_0_50_100_100_100_100_100_80_100_100_0_0', 1)
-coop = Coop()
 n_rounds, n_players = 20, 15
 names = []
 
@@ -121,11 +63,9 @@ def robust_coop() -> None:
     for epoch in range(N_EPOCHS):
         print(f'Epoch: {epoch + 1}')
         list_of_opponents = []
-        list_of_opponents.append(([deepcopy(keep_all) for _ in range(n_players - 1)], 'keep_all'))
-        list_of_opponents.append(([deepcopy(equal_steal) for _ in range(n_players - 1)], 'equal_steal'))
-        list_of_opponents.append(([deepcopy(kill_weakest_thieves) for _ in range(n_players - 2)] + [deepcopy(assassin)],
-                                  'self_play_assassin'))
-        list_of_opponents.append(([deepcopy(coop) for _ in range(n_players - 1)], 'coop'))
+        # list_of_opponents.append(([deepcopy(keep_all) for _ in range(n_players - 1)], 'keep_all'))
+        # list_of_opponents.append(([deepcopy(equal_steal) for _ in range(n_players - 1)], 'equal_steal'))
+        list_of_opponents.append(([], 'coop'))
 
         for opponents, opponents_label in list_of_opponents:
             agents_to_test = []
@@ -139,7 +79,8 @@ def robust_coop() -> None:
             agents_to_test.append(RawO(enhanced=True))
 
             for agent_to_test in agents_to_test:
-                opps = deepcopy(opponents)
+                opps = [deepcopy(agent_to_test) for _ in range(n_players - 1)] if opponents_label == 'coop' else \
+                    deepcopy(opponents)
                 players = create_society(agent_to_test, [], opps, n_players)
                 pops_file = f'../simulations/robust_coop_scores/{agent_to_test.whoami}_{opponents_label}.csv'
                 run_with_specified_agents(players=players, initial_pop_setting='equal', numRounds=n_rounds,
