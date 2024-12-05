@@ -158,7 +158,7 @@ class SOAleqgAATr(AbstractAgent):
 
             self.add_experience(self.generator_to_use_idx, increase, next_state_aat, next_state, True)
 
-        print(f'Generators used: {self.generators_used}')
+        # print(f'Generators used: {self.generators_used}')
 
     def play_round(self, player_idx: int, round_num: int, received: np.array, popularities: np.array,
                    influence: np.array, extra_data, v: np.array, transactions: np.array) -> np.array:

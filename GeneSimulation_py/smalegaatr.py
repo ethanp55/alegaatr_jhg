@@ -166,4 +166,4 @@ class SMAlegAATr(AbstractAgent):
             self.generator_pool.train_aat(player_idx, round_num, received, popularities, influence, extra_data, v,
                                           transactions, self.generator_to_use_idx, BASELINE, enhanced=True)
 
-        print(f'Generators used: {self.generators_used}')
+        # print(f'Generators used: {self.generators_used}')
