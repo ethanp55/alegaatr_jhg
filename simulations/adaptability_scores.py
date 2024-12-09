@@ -4,6 +4,7 @@ from scipy.stats import hmean
 
 baselines = {'keep_all': 81.79069375972314, 'equal_steal': 223.8113639516392, 'coop': 247.25596023343223}
 results, folder = {}, '../simulations/adaptability_results/'
+minimax_val, lowest_reward = 0, 0
 
 for file in os.listdir(folder):
     agent_name = file.split('_')[0]
@@ -14,17 +15,18 @@ for file in os.listdir(folder):
     data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
 
     if opp_type == 'keep_all' or opp_type == 'equal_steal':
-        avg_final_pop = sum([row[-1] for row in data]) / len(data)
+        avg_pop = sum([row[-1] for row in data]) / len(data)
+        regret = (comparison - lowest_reward) - (avg_pop - lowest_reward)
+        val = 1 - max((regret / (comparison - lowest_reward)), 0)
 
     elif opp_type == 'coop':
         row_avgs = [sum(row) / len(row) for row in data]
-        avg_final_pop = sum(row_avgs) / len(row_avgs)
+        avg_pop = sum(row_avgs) / len(row_avgs)
+        regret = (comparison - minimax_val) - (avg_pop - minimax_val)
+        val = 1 - min((regret / (comparison - minimax_val)), 1)
 
     else:
         raise Exception(f'{opp_type} is not a defined opponent type')
-
-    regret = max(comparison - avg_final_pop, 0)
-    val = 1 - (regret / comparison)
 
     assert 0 <= val <= 1
     results[agent_name][opp_type] = val
