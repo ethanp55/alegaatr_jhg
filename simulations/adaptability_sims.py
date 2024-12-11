@@ -46,6 +46,8 @@ names = ['DQN', 'MADQN', 'RDQN', 'AleqgAATr', 'RAlegAATr', 'SOAleqgAATr', 'AlegA
 def adaptability() -> None:
     # Reset any existing simulation files (opening a file in write mode will truncate it)
     for file in os.listdir('../simulations/adaptability_results/'):
+        if 'coop' in file:
+            continue
         name = file.split('_')[0]
         if name in names:
             with open(f'../simulations/adaptability_results/{file}', 'w', newline='') as _:
@@ -56,7 +58,7 @@ def adaptability() -> None:
         list_of_opponents = []
         list_of_opponents.append(([deepcopy(keep_all) for _ in range(n_players - 1)], 'keep_all'))
         list_of_opponents.append(([deepcopy(equal_steal) for _ in range(n_players - 1)], 'equal_steal'))
-        list_of_opponents.append(([], 'coop'))
+        list_of_opponents.append(([], 'selfplay'))
 
         for opponents, opponents_label in list_of_opponents:
             agents_to_test = []
@@ -73,12 +75,59 @@ def adaptability() -> None:
             agents_to_test.append(MADQN(train_networks=False))
 
             for agent_to_test in agents_to_test:
-                opps = [deepcopy(agent_to_test) for _ in range(n_players - 1)] if opponents_label == 'coop' else \
+                opps = [deepcopy(agent_to_test) for _ in range(n_players - 1)] if opponents_label == 'selfplay' else \
                     deepcopy(opponents)
                 players = create_society(agent_to_test, [], opps, n_players)
                 pops_file = f'../simulations/adaptability_results/{agent_to_test.whoami}_{opponents_label}.csv'
                 run_with_specified_agents(players=players, initial_pop_setting='equal', numRounds=n_rounds,
                                           final_pops_file=pops_file)
+
+
+def coop() -> None:
+    # Reset any existing simulation files (opening a file in write mode will truncate it)
+    for file in os.listdir('../simulations/adaptability_results/'):
+        if 'coop' not in file:
+            continue
+        name = file.split('_')[0]
+        if name in names:
+            with open(f'../simulations/adaptability_results/{file}', 'w', newline='') as _:
+                pass
+
+    for epoch in range(N_EPOCHS):
+        print(f'Epoch: {epoch + 1}')
+        cooperators = [AleqgAATr(train_network=False),
+                       RawO(enhanced=True),
+                       QAlegAATr(enhanced=True),
+                       AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True)]
+        cooperators_types = [type(cooperator) for cooperator in cooperators]
+        cooperator_indices = np.arange(len(cooperators))
+
+        agents_to_test = []
+        agents_to_test.append(AlegAATr(lmbda=0.0, ml_model_type='knn', enhanced=True))
+        agents_to_test.append(RAlegAATr(train_network=False))
+        agents_to_test.append(AleqgAATr(train_network=False))
+        agents_to_test.append(SMAlegAATr(enhanced=True))
+        agents_to_test.append(DQNAgent(train_network=False))
+        agents_to_test.append(SOAleqgAATr(train_network=False))
+        agents_to_test.append(QAlegAATr(enhanced=True))
+        agents_to_test.append(RawO(enhanced=True))
+        agents_to_test.append(RAAT(enhanced=True))
+        agents_to_test.append(RDQN(train_network=False))
+        agents_to_test.append(MADQN(train_networks=False))
+
+        for agent_to_test in agents_to_test:
+            print(agent_to_test.whoami)
+            if type(agent_to_test) in cooperators_types:
+                idx_to_exclude = cooperators_types.index(type(agent_to_test))
+                filtered_indices = cooperator_indices[cooperator_indices != idx_to_exclude]
+                opp_indices = np.random.choice(filtered_indices, n_players)
+            else:
+                opp_indices = np.random.choice(len(cooperators), n_players)
+            opps = [deepcopy(cooperators[idx]) for idx in opp_indices]
+            players = create_society(agent_to_test, [], opps, n_players)
+            pops_file = f'../simulations/adaptability_results/{agent_to_test.whoami}_coop.csv'
+            run_with_specified_agents(players=players, initial_pop_setting='equal', numRounds=n_rounds,
+                                      final_pops_file=pops_file)
 
 
 def baselines() -> None:
@@ -116,4 +165,5 @@ def baselines() -> None:
 
 if __name__ == '__main__':
     # baselines()
-    adaptability()
+    # adaptability()
+    coop()
