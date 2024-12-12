@@ -2,6 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.stats import hmean
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 
 USE_H_MEAN = False
 
@@ -222,7 +225,7 @@ print('RAWAAT:')
 print(f'Defect = {rawaat_d_avg}')
 print(f'Self-play = {rawaat_sp_avg}')
 print(f'Coop = {rawaat_c_avg}')
-print(f'Adaptability = {rawaat_a_avg}')
+print(f'Adaptability = {rawaat_a_avg}\n')
 
 features = ['Raw', 'AAT', 'RawAAT']
 conditions = ['Defect', 'Self-Play', 'Cooperate', 'Adaptability']
@@ -256,3 +259,68 @@ plt.clf()
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------------------------------------------------
+# TESTS
+# ----------------------------------------------------------------------------------------------------------------------
+vals = raw_d_scores + aat_d_scores + rawaat_d_scores
+learning_algs = (['Traditional', 'REGaeTune'] * (len(raw_d_scores) // 2)) * 3
+features = ['Raw'] * len(raw_d_scores) + ['AAT'] * len(aat_d_scores) + ['RawAAT'] * len(rawaat_d_scores)
+df = pd.DataFrame(
+    {
+        'L': learning_algs,
+        'F': features,
+        'vals': vals
+    }
+)
+model = ols('vals ~ C(L) + C(F) + C(L):C(F)', data=df).fit()
+anova_table = sm.stats.anova_lm(model, typ=2)
+print('Defect:')
+print(anova_table)
+df['group'] = df['L'] + '_' + df['F']
+print(pairwise_tukeyhsd(endog=df['vals'], groups=df['group'], alpha=0.05))
+
+vals = raw_sp_scores + aat_sp_scores + rawaat_sp_scores
+df = pd.DataFrame(
+    {
+        'L': learning_algs,
+        'F': features,
+        'vals': vals
+    }
+)
+model = ols('vals ~ C(L) + C(F) + C(L):C(F)', data=df).fit()
+anova_table = sm.stats.anova_lm(model, typ=2)
+print('\nSelf-play:')
+print(anova_table)
+df['group'] = df['L'] + '_' + df['F']
+print(pairwise_tukeyhsd(endog=df['vals'], groups=df['group'], alpha=0.05))
+
+vals = raw_c_scores + aat_c_scores + rawaat_c_scores
+df = pd.DataFrame(
+    {
+        'L': learning_algs,
+        'F': features,
+        'vals': vals
+    }
+)
+model = ols('vals ~ C(L) + C(F) + C(L):C(F)', data=df).fit()
+anova_table = sm.stats.anova_lm(model, typ=2)
+print('\nCoop:')
+print(anova_table)
+df['group'] = df['L'] + '_' + df['F']
+print(pairwise_tukeyhsd(endog=df['vals'], groups=df['group'], alpha=0.05))
+
+vals = raw_a_scores + aat_a_scores + rawaat_a_scores
+df = pd.DataFrame(
+    {
+        'L': learning_algs,
+        'F': features,
+        'vals': vals
+    }
+)
+model = ols('vals ~ C(L) + C(F) + C(L):C(F)', data=df).fit()
+anova_table = sm.stats.anova_lm(model, typ=2)
+print('\nAdapt:')
+print(anova_table)
+df['group'] = df['L'] + '_' + df['F']
+print(pairwise_tukeyhsd(endog=df['vals'], groups=df['group'], alpha=0.05))
