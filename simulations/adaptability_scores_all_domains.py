@@ -84,13 +84,12 @@ print(f'Self-play = {t_sp_avg}')
 print(f'Coop = {t_c_avg}')
 print(f'Adaptability = {t_a_avg}\n')
 
-algorithms = ['Traditional', 'REGaeTune', 'AlegAATr']
+algorithms = ['EG', 'REGAETune']
 conditions = ['Defect', 'Self-Play', 'Cooperate', 'Adaptability']
 df = pd.DataFrame(
     {
         algorithms[0]: [traditional_d_scores, traditional_sp_scores, traditional_c_scores, traditional_adapt_scores],
         algorithms[1]: [regaetune_d_scores, regaetune_sp_scores, regaetune_c_scores, regaetune_adapt_scores],
-        algorithms[2]: [alegaatr_d_scores, alegaatr_sp_scores, alegaatr_c_scores, alegaatr_adapt_scores]
     }
 )
 
@@ -110,11 +109,10 @@ x = np.arange(len(conditions))
 width = 0.2
 fig, ax = plt.subplots(figsize=(10, 3))
 plt.grid()
-bars1 = ax.bar(x - width, mean_values[:, 0], width, yerr=se_values[:, 0], label=algorithms[0], capsize=5,
+bars1 = ax.bar(x - width * 0.5, mean_values[:, 0], width, yerr=se_values[:, 0], label=algorithms[0], capsize=5,
                color='crimson')
-bars2 = ax.bar(x, mean_values[:, 1], width, yerr=se_values[:, 1], label=algorithms[1], capsize=5, color='gold')
-bars3 = ax.bar(x + width, mean_values[:, 2], width, yerr=se_values[:, 2], label=algorithms[2], capsize=5,
-               color='lightblue')
+bars2 = ax.bar(x + width * 0.5, mean_values[:, 1], width, yerr=se_values[:, 1], label=algorithms[1], capsize=5,
+               color='gold')
 ax.set_xlabel('Condition', fontsize=18, fontweight='bold')
 ax.set_ylabel('Score', fontsize=18, fontweight='bold')
 # ax.set_title('Algorithm Performance by Condition')
@@ -254,6 +252,75 @@ ax.set_xticks(x)
 ax.set_xticklabels(conditions)
 ax.legend()
 plt.savefig('../simulations/scores_by_feature_set.png', bbox_inches='tight')
+plt.clf()
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------------------------------------------------
+# AlegAATr vs. other REGAETune algorithms
+# ----------------------------------------------------------------------------------------------------------------------
+regae_aat_d_scores = [regaetune_d_scores[1], regaetune_d_scores[4], regaetune_d_scores[7]]
+regae_aat_sp_scores = [regaetune_sp_scores[1], regaetune_sp_scores[4], regaetune_sp_scores[7]]
+regae_aat_c_scores = [regaetune_c_scores[1], regaetune_c_scores[4], regaetune_c_scores[7]]
+regae_aat_a_scores = [regaetune_adapt_scores[1], regaetune_adapt_scores[4], regaetune_adapt_scores[7]]
+
+algs = ['REGAE-AAT', 'AlegAATr']
+conditions = ['Defect', 'Self-Play', 'Cooperate', 'Adaptability']
+df = pd.DataFrame(
+    {
+        algs[0]: [raw_d_scores, raw_sp_scores, raw_c_scores, raw_a_scores],
+        algs[1]: [alegaatr_d_scores, alegaatr_sp_scores, alegaatr_c_scores, alegaatr_adapt_scores],
+    }
+)
+stats = {a: calculate_stats(df[a]) for a in algs}
+for a in algs:
+    df[f'{a}_mean'], df[f'{a}_se'] = stats[a]
+mean_values = df[[f'{a}_mean' for a in algs]].values
+se_values = df[[f'{a}_se' for a in algs]].values
+x = np.arange(len(conditions))
+width = 0.2
+fig, ax = plt.subplots(figsize=(10, 3))
+plt.grid()
+bars1 = ax.bar(x - width * 0.5, mean_values[:, 0], width, yerr=se_values[:, 0], label=algs[0], capsize=5,
+               color='purple')
+bars2 = ax.bar(x + width * 0.5, mean_values[:, 1], width, yerr=se_values[:, 1], label=algs[1], capsize=5,
+               color='lightgreen')
+ax.set_xlabel('Condition', fontsize=18, fontweight='bold')
+ax.set_ylabel('Score', fontsize=18, fontweight='bold')
+ax.set_xticks(x)
+ax.set_xticklabels(conditions)
+ax.legend()
+plt.savefig('../simulations/alegaatr_vs_regaeaat.png', bbox_inches='tight')
+plt.clf()
+
+algs = ['REGAETune', 'AlegAATr']
+conditions = ['Defect', 'Self-Play', 'Cooperate', 'Adaptability']
+df = pd.DataFrame(
+    {
+        algs[0]: [regaetune_d_scores, regaetune_sp_scores, regaetune_c_scores, regaetune_adapt_scores],
+        algs[1]: [alegaatr_d_scores, alegaatr_sp_scores, alegaatr_c_scores, alegaatr_adapt_scores],
+    }
+)
+stats = {a: calculate_stats(df[a]) for a in algs}
+for a in algs:
+    df[f'{a}_mean'], df[f'{a}_se'] = stats[a]
+mean_values = df[[f'{a}_mean' for a in algs]].values
+se_values = df[[f'{a}_se' for a in algs]].values
+x = np.arange(len(conditions))
+width = 0.2
+fig, ax = plt.subplots(figsize=(10, 3))
+plt.grid()
+bars1 = ax.bar(x - width * 0.5, mean_values[:, 0], width, yerr=se_values[:, 0], label=algs[0], capsize=5, color='gold')
+bars2 = ax.bar(x + width * 0.5, mean_values[:, 1], width, yerr=se_values[:, 1], label=algs[1], capsize=5,
+               color='lightgreen')
+ax.set_xlabel('Condition', fontsize=18, fontweight='bold')
+ax.set_ylabel('Score', fontsize=18, fontweight='bold')
+ax.set_xticks(x)
+ax.set_xticklabels(conditions)
+ax.legend()
+plt.savefig('../simulations/alegaatr_vs_regaetune.png', bbox_inches='tight')
 plt.clf()
 
 # ----------------------------------------------------------------------------------------------------------------------
