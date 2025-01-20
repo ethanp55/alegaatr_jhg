@@ -16,6 +16,7 @@ from GeneSimulation_py.geneagent3 import GeneAgent3
 from GeneSimulation_py.madqn import MADQN
 from GeneSimulation_py.main import run_with_specified_agents
 from GeneSimulation_py.qalegaatr import QAlegAATr
+from GeneSimulation_py.raat import RAAT
 from GeneSimulation_py.ralegaatr import RAlegAATr
 from GeneSimulation_py.rawo import RawO
 from GeneSimulation_py.rdqn import RDQN
@@ -75,13 +76,13 @@ def self_play(agent: AbstractAgent, max_players: int = 20) -> List[AbstractAgent
     return agent_copies
 
 
-N_EPOCHS = 1
+N_EPOCHS = 5
 # INITIAL_POP_CONDITIONS = ['equal', 'highlow', 'power', 'random', 'step']
 INITIAL_POP_CONDITIONS = ['equal']
 N_PLAYERS = [5, 10, 15, 20]
 N_ROUNDS = [10, 20, 30, 40]
 
-names = []
+names = ['RAAT']
 
 
 def simulations() -> None:
@@ -160,9 +161,11 @@ def simulations() -> None:
                         #                            track_vector_file=f'../simulations/vectors/RDQN_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}.csv'))
                         # agents_to_test.append(SOAleqgAATr(train_network=False))
                         # agents_to_test.append(QAlegAATr(enhanced=True))
-                        agents_to_test.append(RawO(enhanced=True,
-                                                   track_vector_file=f'RawO_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}.csv'))
+                        # agents_to_test.append(RawO(enhanced=True,
+                        #                            track_vector_file=f'RawO_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}.csv'))
                         # agents_to_test.extend(generators())
+                        agents_to_test.append(RAAT(enhanced=True,
+                                                   track_vector_file=f'RAAT_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}.csv'))
 
                         for agent_to_test in agents_to_test:
                             # Create cats (if any)
@@ -173,10 +176,10 @@ def simulations() -> None:
                             players = create_society(agent_to_test, cats, opps, n_players)
                             simulation_label = f'{agent_to_test.whoami}_{opponents_label}_pop={initial_pop_condition}_p={n_players}_r={n_rounds}_c={n_cats}'
                             partial_func = partial(run_with_specified_agents, players=players,
-                                                   # final_pops_file=f'../simulations/results/{simulation_label}.csv',
+                                                   final_pops_file=f'../simulations/results/{simulation_label}.csv',
                                                    initial_pop_setting=initial_pop_condition, numRounds=n_rounds,
                                                    # initial_pops_file=f'../simulations/initial_pops/{simulation_label}.csv',
-                                                   # generator_file=f'../simulations/generator_usage/{simulation_label}.csv'
+                                                   generator_file=f'../simulations/generator_usage/{simulation_label}.csv'
                                                    )
                             # partial_func = partial(run_with_specified_agents, players=players,
                             #                        initial_pop_setting=initial_pop_condition, numRounds=n_rounds,

@@ -147,7 +147,7 @@ for file in os.listdir(folder):
     assert generators.shape[0] == vectors.shape[0]
     agent_name = file.split('_')[0]
 
-    # if agent_name != 'SMAlegAATr' and agent_name != 'AleqgAATr':
+    # if agent_name != 'RAAT':
     #     continue
 
     for i in range(generators.shape[0]):
