@@ -1,61 +1,135 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import os
-from scipy.stats import hmean
 
-baselines = {'keep_all': 81.79069375972314, 'equal_steal': 223.8113639516392, 'selfplay': 247.25596023343223,
-             'coop': 247.25596023343223}
+baselines = {'keep_all': 73.97003733882813, 'equal_steal': 171.4779956854728, 'selfplay': 397.48658853226533,
+             'coop1': 400.35266549802424, 'coop2': 383.1456098269865}
 results, folder = {}, '../simulations/adaptability_results/'
 minimax_val, lowest_reward = 0, 0
 
-for file in os.listdir(folder):
-    agent_name = file.split('_')[0]
-    if agent_name not in results:
-        results[agent_name] = {}
-    opp_type = file[len(agent_name) + 1:-4]
-    comparison = baselines[opp_type]
-    data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
+# for file in os.listdir(folder):
+#     agent_name = file.split('_')[0]
+#     if agent_name not in results:
+#         results[agent_name] = {}
+#     opp_type = file[len(agent_name) + 1:-4]
+#     comparison = baselines[opp_type]
+#     data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
+#
+#     if opp_type == 'keep_all' or opp_type == 'equal_steal':
+#         avg_pop = sum([row[-1] for row in data]) / len(data)
+#         regret = (comparison - lowest_reward) - (avg_pop - lowest_reward)
+#         val = 1 - max((regret / (comparison - lowest_reward)), 0)
+#
+#     elif opp_type == 'selfplay':
+#         row_avgs = [sum(row) / len(row) for row in data]
+#         avg_pop = sum(row_avgs) / len(row_avgs)
+#         regret = (comparison - minimax_val) - (avg_pop - minimax_val)
+#         val = 1 - min((regret / (comparison - minimax_val)), 1)
+#
+#     elif opp_type == 'coop':
+#         avg_pop = sum([row[-1] for row in data]) / len(data)
+#         regret = (comparison - minimax_val) - (avg_pop - minimax_val)
+#         val = 1 - min((regret / (comparison - minimax_val)), 1)
+#
+#     else:
+#         raise Exception(f'{opp_type} is not a defined opponent type')
+#
+#     assert 0 <= val <= 1
+#     results[agent_name][opp_type] = val
+#
+# rc_scores = []
+# for agent, res, in results.items():
+#     print(agent)
+#     defect_scores, self_play_score, coop_score = [], -1, -1
+#     for opp_type in baselines.keys():
+#         print(f'{opp_type}: {res[opp_type]}')
+#         if opp_type == 'selfplay':
+#             self_play_score = res[opp_type]
+#         elif opp_type == 'coop':
+#             coop_score = res[opp_type]
+#         else:
+#             defect_scores.append(res[opp_type])
+#     defect_score = sum(defect_scores) / len(defect_scores)
+#     robust_coop_score = min([defect_score, self_play_score, coop_score])
+#     print(f'Defect score: {defect_score}')
+#     print(f'Self-play score: {self_play_score}')
+#     print(f'Coop score: {coop_score}')
+#     print(f'Robust coop score: {robust_coop_score}\n')
+#     rc_scores.append((agent, robust_coop_score))
+# rc_scores.sort(key=lambda x: x[1], reverse=True)
+# print(rc_scores)
 
-    if opp_type == 'keep_all' or opp_type == 'equal_steal':
-        avg_pop = sum([row[-1] for row in data]) / len(data)
-        regret = (comparison - lowest_reward) - (avg_pop - lowest_reward)
-        val = 1 - max((regret / (comparison - lowest_reward)), 0)
+N_TRAIN_TEST_RUNS = 5
+results_from_every_epoch = {}
 
-    elif opp_type == 'selfplay':
-        row_avgs = [sum(row) / len(row) for row in data]
-        avg_pop = sum(row_avgs) / len(row_avgs)
-        regret = (comparison - minimax_val) - (avg_pop - minimax_val)
-        val = 1 - min((regret / (comparison - minimax_val)), 1)
+for run_num in range(N_TRAIN_TEST_RUNS):
+    results = {}
+    for file in os.listdir(folder):
+        if f'epoch={run_num}' not in file:
+            continue
+        agent_name = file.split('_')[0]
+        if agent_name not in results_from_every_epoch:
+            results_from_every_epoch[agent_name] = {}
+        if agent_name not in results:
+            results[agent_name] = {}
+        opp_type = file.split('_')[1]
+        height, width = int(file.split('_')[2].split('=')[1]), int(file.split('_')[3].split('.')[0][2:])
+        comparison = baselines[opp_type]
+        data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
 
-    elif opp_type == 'coop':
-        avg_pop = sum([row[-1] for row in data]) / len(data)
-        regret = (comparison - minimax_val) - (avg_pop - minimax_val)
-        val = 1 - min((regret / (comparison - minimax_val)), 1)
+        if opp_type == 'keep_all' or opp_type == 'equal_steal':
+            avg_pop = sum([row[-1] for row in data]) / len(data)
+            regret = (comparison - lowest_reward) - (avg_pop - lowest_reward)
+            val = 1 - max((regret / (comparison - lowest_reward)), 0)
 
-    else:
-        raise Exception(f'{opp_type} is not a defined opponent type')
+        elif opp_type == 'selfplay':
+            row_avgs = [sum(row) / len(row) for row in data]
+            avg_pop = sum(row_avgs) / len(row_avgs)
+            regret = (comparison - minimax_val) - (avg_pop - minimax_val)
+            val = 1 - min((regret / (comparison - minimax_val)), 1)
 
-    assert 0 <= val <= 1
-    results[agent_name][opp_type] = val
+        elif opp_type == 'coop1':
+            row_avgs = [sum(row[5:]) / len(row[5:]) for row in data]
+            avg_reward = sum(row_avgs) / len(row_avgs)
+            regret = (comparison - minimax_val) - (avg_reward - minimax_val)
+            val = 1 - min((regret / (comparison - minimax_val)), 1)
 
-rc_scores = []
-for agent, res, in results.items():
-    print(agent)
-    defect_scores, self_play_score, coop_score = [], -1, -1
-    for opp_type in baselines.keys():
-        print(f'{opp_type}: {res[opp_type]}')
-        if opp_type == 'selfplay':
-            self_play_score = res[opp_type]
-        elif opp_type == 'coop':
-            coop_score = res[opp_type]
+        elif opp_type == 'coop2':
+            avg_reward = sum([row[-1] for row in data]) / len(data)
+            regret = (comparison - minimax_val) - (avg_reward - minimax_val)
+            val = 1 - min((regret / (comparison - minimax_val)), 1)
+
         else:
-            defect_scores.append(res[opp_type])
-    # defect_score = hmean(defect_scores)
-    defect_score = sum(defect_scores) / len(defect_scores)
-    robust_coop_score = min([defect_score, self_play_score, coop_score])
-    print(f'Defect score: {defect_score}')
-    print(f'Self-play score: {self_play_score}')
-    print(f'Coop score: {coop_score}')
-    print(f'Robust coop score: {robust_coop_score}\n')
-    rc_scores.append((agent, robust_coop_score))
-rc_scores.sort(key=lambda x: x[1], reverse=True)
-print(rc_scores)
+            raise Exception(f'{opp_type} is not a defined opponent type')
+
+        val = max(val, 0)
+        val = min(val, 1)
+        assert 0 <= val <= 1
+        results[agent_name][opp_type] = val
+
+    for agent, res, in results.items():
+        keep_all_score, equal_steal_score, self_play_score, coop1_score, coop2_score = \
+            res['keep_all'], res['equal_steal'], res['selfplay'], res['coop1'], res['coop2']
+        avg_defect_score = (keep_all_score + equal_steal_score) / 2
+        avg_coop_score = (self_play_score + coop1_score + coop2_score) / 3
+        adapt_score = min([avg_defect_score, avg_coop_score])
+        results_from_every_epoch[agent]['d'] = results_from_every_epoch[agent].get('d', []) + [avg_defect_score]
+        results_from_every_epoch[agent]['c'] = results_from_every_epoch[agent].get('c', []) + [avg_coop_score]
+        results_from_every_epoch[agent]['a'] = results_from_every_epoch[agent].get('a', []) + [adapt_score]
+
+alg_names = ['DQN', 'RAlegAATr', 'AleqgAATr', 'RawO', 'RAAT', 'QAlegAATr', 'AlegAATr']
+alg_plot_names = ['EG-Raw', 'EG-AAT', 'EG-RawAAT', 'REGAE-Raw', 'REGAE-AAT', 'REGAE-RawAAT', 'AlegAATr']
+for cond in ['d', 'c', 'a']:
+    avgs, ses = [], []
+    for alg in alg_names:
+        alg_data = results_from_every_epoch[alg][cond]
+        avgs.append(np.mean(alg_data))
+        ses.append(np.std(alg_data, ddof=1) / np.sqrt(len(alg_data)))
+
+    plt.figure(figsize=(10, 3))
+    plt.grid()
+    plt.bar(alg_plot_names, avgs, yerr=ses, capsize=5)
+    plt.xlabel('Algorithm', fontsize=18, fontweight='bold')
+    plt.ylabel('Score', fontsize=18, fontweight='bold')
+    plt.savefig(f'../simulations/{cond}.png', bbox_inches='tight')
+    plt.clf()

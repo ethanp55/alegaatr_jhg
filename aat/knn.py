@@ -6,58 +6,63 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import r2_score
 from sklearn.model_selection import cross_val_score
 
-# Read in the training data
-generator_to_alignment_vectors, generator_to_correction_terms = {}, {}
-training_data_folder = '../aat/training_data/'
-enhanced = True
-adjustment = '_enh' if enhanced else ''
 
-for file in os.listdir(training_data_folder):
-    if (enhanced and '_enh' not in file) or (not enhanced and '_enh' in file) or 'sin_c' in file:
-        continue
+def fit_knn_models(enhanced):
+    # Read in the training data
+    generator_to_alignment_vectors, generator_to_correction_terms = {}, {}
+    training_data_folder = '../aat/training_data/'
+    adjustment = '_enh' if enhanced else ''
 
-    generator_idx = file.split('_')[1]
-    data = np.genfromtxt(f'{training_data_folder}{file}', delimiter=',', skip_header=0)
-    is_alignment_vectors = 'vectors' in file
-    map_to_add_to = generator_to_alignment_vectors if is_alignment_vectors else generator_to_correction_terms
-    map_to_add_to[generator_idx] = data
+    for file in os.listdir(training_data_folder):
+        if (enhanced and '_enh' not in file) or (not enhanced and '_enh' in file) or 'sin_c' in file:
+            continue
 
-# Make sure the training data was read in properly
-for generator_idx, vectors in generator_to_alignment_vectors.items():
-    correction_terms = generator_to_correction_terms[generator_idx]
+        generator_idx = file.split('_')[1]
+        data = np.genfromtxt(f'{training_data_folder}{file}', delimiter=',', skip_header=0)
+        is_alignment_vectors = 'vectors' in file
+        map_to_add_to = generator_to_alignment_vectors if is_alignment_vectors else generator_to_correction_terms
+        map_to_add_to[generator_idx] = data
 
-    assert len(vectors) == len(correction_terms)
+    # Make sure the training data was read in properly
+    for generator_idx, vectors in generator_to_alignment_vectors.items():
+        correction_terms = generator_to_correction_terms[generator_idx]
 
-# Train KNN models for each generator
-for generator_idx, x in generator_to_alignment_vectors.items():
-    y = generator_to_correction_terms[generator_idx]
-    # pca = PCA(n_components=0.95)
-    # x_reduced = pca.fit_transform(x)
-    x_reduced = x
+        assert len(vectors) == len(correction_terms)
 
-    print(f'X and Y data for generator {generator_idx}')
-    print('X train shape: ' + str(x_reduced.shape))
-    print('Y train shape: ' + str(y.shape))
+    # Train KNN models for each generator
+    for generator_idx, x in generator_to_alignment_vectors.items():
+        y = generator_to_correction_terms[generator_idx]
+        # pca = PCA(n_components=0.95)
+        # x_reduced = pca.fit_transform(x)
+        x_reduced = x
 
-    # Use cross validation (10 folds) to find the best k value
-    k_values, cv_scores = range(1, int(len(x_reduced) ** 0.5) + 1), []
-    for k in k_values:
-        knn = KNeighborsRegressor(n_neighbors=k, weights='distance')
-        scores = cross_val_score(knn, x_reduced, y, cv=5, scoring='neg_mean_squared_error')
-        cv_scores.append(scores.mean())
-    n_neighbors = k_values[np.argmax(cv_scores)]
+        print(f'X and Y data for generator {generator_idx}')
+        print('X train shape: ' + str(x_reduced.shape))
+        print('Y train shape: ' + str(y.shape))
 
-    # Create and store the model
-    knn = KNeighborsRegressor(n_neighbors=n_neighbors, weights='distance')
-    knn.fit(x_reduced, y)
+        # Use cross validation (10 folds) to find the best k value
+        k_values, cv_scores = range(1, int(len(x_reduced) ** 0.5) + 1), []
+        for k in k_values:
+            knn = KNeighborsRegressor(n_neighbors=k, weights='distance')
+            scores = cross_val_score(knn, x_reduced, y, cv=5, scoring='neg_mean_squared_error')
+            cv_scores.append(scores.mean())
+        n_neighbors = k_values[np.argmax(cv_scores)]
 
-    with open(f'../aat/knn_models/generator_{generator_idx}_knn{adjustment}.pickle', 'wb') as f:
-        pickle.dump(knn, f)
+        # Create and store the model
+        knn = KNeighborsRegressor(n_neighbors=n_neighbors, weights='distance')
+        knn.fit(x_reduced, y)
 
-    # with open(f'../aat/knn_models/generator_{generator_idx}_pca.pickle', 'wb') as f:
-    #     pickle.dump(pca, f)
+        with open(f'../aat/knn_models/generator_{generator_idx}_knn{adjustment}.pickle', 'wb') as f:
+            pickle.dump(knn, f)
 
-    # Print metrics and best number of neighbors
-    print(f'Best MSE: {-cv_scores[np.argmax(cv_scores)]}')
-    print(f'Best R-squared: {r2_score(y, knn.predict(x_reduced))}')
-    print(f'N neighbors: {n_neighbors}\n')
+        # with open(f'../aat/knn_models/generator_{generator_idx}_pca.pickle', 'wb') as f:
+        #     pickle.dump(pca, f)
+
+        # Print metrics and best number of neighbors
+        print(f'Best MSE: {-cv_scores[np.argmax(cv_scores)]}')
+        print(f'Best R-squared: {r2_score(y, knn.predict(x_reduced))}')
+        print(f'N neighbors: {n_neighbors}\n')
+
+
+if __name__ == '__main__':
+    fit_knn_models(enhanced=True)

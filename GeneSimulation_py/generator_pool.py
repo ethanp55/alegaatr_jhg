@@ -50,9 +50,13 @@ class GeneratorPool:
                     tup = (generator_just_used.assumptions(), round_num, np.squeeze(curr_state))
 
                 else:
-                    assumps = np.array([gen.assumptions().alignment_vector() for gen in self.generators]).reshape(-1, )
-                    tup = (assumps, round_num, None)
-                    # tup = (generator_just_used.assumptions(), round_num, None)
+                    if self.no_baseline_labels:
+                        assumps = np.array([gen.assumptions().alignment_vector() for gen in self.generators]).reshape(
+                            -1, )
+                        tup = (assumps, round_num, None)
+                    else:
+                        tup = (generator_just_used.assumptions(), round_num, None)
+
                 self.generator_to_assumption_estimates[
                     generator_just_used_idx] = self.generator_to_assumption_estimates.get(generator_just_used_idx,
                                                                                           []) + [tup]
