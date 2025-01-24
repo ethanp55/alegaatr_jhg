@@ -73,7 +73,8 @@ for run_num in range(N_TRAIN_TEST_RUNS):
         if agent_name not in results:
             results[agent_name] = {}
         opp_type = file.split('_')[1]
-        height, width = int(file.split('_')[2].split('=')[1]), int(file.split('_')[3].split('.')[0][2:])
+        if 'coop' not in opp_type and 'selfplay' not in opp_type:
+            opp_type = f'{file.split("_")[1]}_{file.split("_")[2]}'
         comparison = baselines[opp_type]
         data = np.genfromtxt(f'{folder}{file}', delimiter=',', skip_header=0)
 

@@ -39,7 +39,7 @@ from aat.train_qalegaatr import train_qalegaatr
 from GeneSimulation_py.train_dqn import train_dqn
 from GeneSimulation_py.train_ralegaatr import train_ralegaatr
 from GeneSimulation_py.train_aleqgaatr import train_aleqgaatr
-from simulations.adaptability_sims import adaptability
+from adaptability_sims import adaptability
 
 
 # Simple bandit agent that periodically explores and exploits otherwise
