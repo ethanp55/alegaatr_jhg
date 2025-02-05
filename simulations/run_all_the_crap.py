@@ -288,7 +288,7 @@ def create_society(our_player: AbstractAgent, cats: List[AssassinAgent], all_oth
     return players
 
 
-N_TRAIN_TEST_RUNS = 5
+N_TRAIN_TEST_RUNS = 10
 N_EPOCHS = 5
 INITIAL_POP_CONDITIONS = ['equal', 'random']
 N_PLAYERS = [5, 10, 15]

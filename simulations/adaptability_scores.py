@@ -59,7 +59,7 @@ minimax_val, lowest_reward = 0, 0
 # rc_scores.sort(key=lambda x: x[1], reverse=True)
 # print(rc_scores)
 
-N_TRAIN_TEST_RUNS = 5
+N_TRAIN_TEST_RUNS = 10
 results_from_every_epoch = {}
 
 for run_num in range(N_TRAIN_TEST_RUNS):
@@ -118,8 +118,9 @@ for run_num in range(N_TRAIN_TEST_RUNS):
         results_from_every_epoch[agent]['c'] = results_from_every_epoch[agent].get('c', []) + [avg_coop_score]
         results_from_every_epoch[agent]['a'] = results_from_every_epoch[agent].get('a', []) + [adapt_score]
 
-alg_names = ['DQN', 'RAlegAATr', 'AleqgAATr', 'RawO', 'RAAT', 'QAlegAATr', 'AlegAATr']
-alg_plot_names = ['EG-Raw', 'EG-AAT', 'EG-RawAAT', 'REGAE-Raw', 'REGAE-AAT', 'REGAE-RawAAT', 'AlegAATr']
+alg_names = ['DQN', 'RawO', 'RAlegAATr', 'RAAT', 'AleqgAATr', 'QAlegAATr', 'AlegAATr']
+alg_plot_names = ['EG-Raw', 'REGAE-Raw', 'EG-AAT', 'REGAE-AAT', 'EG-RawAAT',  'REGAE-RawAAT', 'AlegAATr']
+colors = ['blue', 'green', 'blue', 'green', 'blue', 'green', 'lightgreen']
 for cond in ['d', 'c', 'a']:
     avgs, ses = [], []
     for alg in alg_names:
@@ -129,7 +130,7 @@ for cond in ['d', 'c', 'a']:
 
     plt.figure(figsize=(10, 3))
     plt.grid()
-    plt.bar(alg_plot_names, avgs, yerr=ses, capsize=5)
+    plt.bar(alg_plot_names, avgs, yerr=ses, capsize=5, color=colors)
     plt.xlabel('Algorithm', fontsize=18, fontweight='bold')
     plt.ylabel('Score', fontsize=18, fontweight='bold')
     plt.savefig(f'../simulations/{cond}.png', bbox_inches='tight')
