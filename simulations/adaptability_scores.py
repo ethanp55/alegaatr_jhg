@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pandas as pd
 
 baselines = {'keep_all': 73.97003733882813, 'equal_steal': 171.4779956854728, 'selfplay': 397.48658853226533,
              'coop1': 400.35266549802424, 'coop2': 383.1456098269865}
@@ -119,14 +120,23 @@ for run_num in range(N_TRAIN_TEST_RUNS):
         results_from_every_epoch[agent]['a'] = results_from_every_epoch[agent].get('a', []) + [adapt_score]
 
 alg_names = ['DQN', 'RawO', 'RAlegAATr', 'RAAT', 'AleqgAATr', 'QAlegAATr', 'AlegAATr']
-alg_plot_names = ['EG-Raw', 'REGAE-Raw', 'EG-AAT', 'REGAE-AAT', 'EG-RawAAT',  'REGAE-RawAAT', 'AlegAATr']
-colors = ['blue', 'green', 'blue', 'green', 'blue', 'green', 'lightgreen']
+alg_plot_names = ['EG-Raw', 'REGAE-Raw', 'EG-AAT', 'REGAE-AAT', 'EG-RawAAT', 'REGAE-RawAAT', 'AlegAATr']
+colors = ['#ef8a62', '#67a9cf', '#ef8a62', '#67a9cf', '#ef8a62', '#67a9cf', '#999999']
+a_scores, learning_algs, features = [], [], []
 for cond in ['d', 'c', 'a']:
     avgs, ses = [], []
     for alg in alg_names:
         alg_data = results_from_every_epoch[alg][cond]
         avgs.append(np.mean(alg_data))
         ses.append(np.std(alg_data, ddof=1) / np.sqrt(len(alg_data)))
+
+        if cond == 'a' and alg != 'AlegAATr':
+            a_scores.extend(alg_data)
+            name = alg_plot_names[alg_names.index(alg)]
+            learning_alg = name.split('-')[0]
+            feature_set = name.split('-')[1]
+            learning_algs.extend([learning_alg] * len(alg_data))
+            features.extend([feature_set] * len(alg_data))
 
     plt.figure(figsize=(10, 3))
     plt.grid()
@@ -135,3 +145,10 @@ for cond in ['d', 'c', 'a']:
     plt.ylabel('Score', fontsize=18, fontweight='bold')
     plt.savefig(f'../simulations/{cond}.png', bbox_inches='tight')
     plt.clf()
+
+df = pd.DataFrame({
+    'adaptability': a_scores,
+    'learning_alg': learning_algs,
+    'feature_set': features
+})
+df.to_csv('./jhg_adaptability_results.csv', index=False)
