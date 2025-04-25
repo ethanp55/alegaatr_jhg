@@ -10,13 +10,18 @@ pursuit_results = pd.read_csv('./pursuit_adaptability_results.csv')
 
 df = pd.concat([jhg_results, prisoners_results, pursuit_results], ignore_index=True)
 
-# The interaction effect is not significant, so we're just using an additive model
 include_alegaatr = False
 score_type = 'a'
-df_filtered = df[(df['score_type'] == score_type) & (df['learning_alg'] != 'REGAEKNN') & (
-        df['feature_set'] != 'AATKNN')] if not include_alegaatr else df[df['score_type'] == score_type]
-model = ols('score ~ C(learning_alg) + C(feature_set)', data=df_filtered).fit()
-anova = sm.stats.anova_lm(model, typ=2)
+if include_alegaatr:
+    df_filtered = df[(df['score_type'] == score_type) & (df['learning_alg'] != 'EG')]
+    model = ols('score ~ C(feature_set)', data=df_filtered).fit()
+    anova = sm.stats.anova_lm(model, typ=2)
+
+else:
+    df_filtered = df[
+        (df['score_type'] == score_type) & (df['learning_alg'] != 'REGAEKNN') & (df['feature_set'] != 'AATKNN')]
+    model = ols('score ~ C(learning_alg) * C(feature_set)', data=df_filtered).fit()
+    anova = sm.stats.anova_lm(model, typ=2)
 print(anova)
 print()
 
